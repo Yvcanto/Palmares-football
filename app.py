@@ -120,7 +120,7 @@ def show_color_legend():
         f'background-color:{meta["hex"]};border:1px solid #999;'
         f'margin-right:6px;vertical-align:middle;"></span>'
         f'{meta["label"]}</span>'
-        for meta in COLOR_LEGEND.values()
+        for key, meta in COLOR_LEGEND.items() if key != "NONE"
     )
     st.markdown(f"<div style='margin-bottom:8px;'>{swatches}</div>", unsafe_allow_html=True)
 
