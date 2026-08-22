@@ -36,9 +36,9 @@ SHEET_C1 = "Ligue des Champions"
 # ------------------------------------------------------------------
 COLOR_LEGEND = {
     "FF0000": {"label": "Club disparu", "hex": "#FF0000"},
-    "00B050": {"label": "Surlignage vert", "hex": "#00B050"},
-    "0070C0": {"label": "Surlignage bleu", "hex": "#0070C0"},
-    "FF9900": {"label": "Surlignage orange", "hex": "#FF9900"},
+    "00B050": {"label": "Ancien champion dont le dernier titre est le plus ancien", "hex": "#00B050"},
+    "0070C0": {"label": "Ancien champion évoluant au niveau de division le plus bas disponible", "hex": "#0070C0"},
+    "FF9900": {"label": "Ancien champion au niveau de division le plus bas et dont le dernier titre est le plus ancien", "hex": "#FF9900"},
     "NONE": {"label": "Sans surlignage", "hex": "#FFFFFF"},
 }
 
