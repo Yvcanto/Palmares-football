@@ -20,6 +20,7 @@ from data_utils import (
     HEADER_COLOR,
     SHEET_C1,
     SHEET_FINALISTES,
+    classify_color,
     load_all,
 )
 
@@ -83,7 +84,7 @@ def render_styled_table(sub_df: pd.DataFrame, columns: list[tuple[str, str]]):
     rows_html = []
     for _, row in sub_df.iterrows():
         color_code = row.get("_color", "NONE")
-        meta = COLOR_LEGEND.get(color_code, COLOR_LEGEND["NONE"])
+        meta = COLOR_LEGEND[classify_color(color_code)]
         bg = meta["hex"]
         font_color = "#FFFFFF" if color_code == "FF0000" else "#000000"
         weight = "bold" if color_code == "FF0000" else "normal"
@@ -179,7 +180,7 @@ with tab_carte:
 
         winners = df_c1.copy()
         winners["MarkerColor"] = winners["_color"].map(
-            lambda c: COLOR_LEGEND.get(c, COLOR_LEGEND["NONE"])["marker"]
+            lambda c: COLOR_LEGEND[classify_color(c)]["marker"]
         )
         winners["HoverText"] = winners.apply(make_hover_text, axis=1)
 
@@ -236,74 +237,25 @@ with tab_carte:
 
     # --------------------------------------------------------------
     # MODE "Championnats nationaux" : carte du monde par continent,
-    # puis clic sur un pays pour zoomer sur ses clubs.
+    # remplacée par la carte du pays au clic (avec bouton retour).
     # --------------------------------------------------------------
     else:
         source_df = df_national
-        st.caption(
-            "Cliquez sur un pays pour zoomer et voir chaque club positionné "
-            "sur la carte. Écosse, Pays de Galles et Irlande du Nord n'ayant "
-            "pas de code ISO propre, ils sont affichés sur le même polygone "
-            "que le Royaume-Uni (Angleterre) sur la carte du monde uniquement "
-            "— leurs palmarès restent séparés dans les données et sur la "
-            "carte pays."
-        )
 
-        # Agrégation par code ISO3 (plusieurs 'Pays' peuvent partager un ISO3)
-        agg_rows = []
-        for iso3, grp in source_df.groupby("Iso3"):
-            pays_list = sorted(grp["Pays"].unique())
-            top3 = (
-                grp.groupby("Club")["Nb_titres"].max()
-                .sort_values(ascending=False)
-                .head(3)
+        if "nat_selected_iso3" not in st.session_state:
+            st.session_state.nat_selected_iso3 = None
+
+        # -------- VUE PAYS (si un pays a été sélectionné) --------
+        if st.session_state.nat_selected_iso3:
+            iso3 = st.session_state.nat_selected_iso3
+            candidates = sorted(
+                source_df.loc[source_df["Iso3"] == iso3, "Pays"].unique()
             )
-            top3_txt = "<br>".join(f"• {c} ({int(t)} titres)" for c, t in top3.items())
-            agg_rows.append({
-                "Iso3": iso3,
-                "Pays_label": " / ".join(pays_list),
-                "Continent": grp["Continent"].iloc[0],
-                "Nb_clubs": grp["Club"].nunique(),
-                "Nb_titres_total": int(grp["Nb_titres"].sum()),
-                "Top3": top3_txt,
-            })
-        map_df = pd.DataFrame(agg_rows)
 
-        fig = px.choropleth(
-            map_df,
-            locations="Iso3",
-            color="Continent",
-            hover_name="Pays_label",
-            custom_data=["Top3", "Nb_clubs", "Nb_titres_total"],
-            color_discrete_map=CONTINENT_COLORS,
-            category_orders={"Continent": list(CONTINENT_COLORS.keys())},
-        )
-        fig.update_traces(
-            hovertemplate=(
-                "<b>%{hovertext}</b><br>"
-                "Clubs recensés : %{customdata[1]}<br>"
-                "Titres cumulés : %{customdata[2]}<br>"
-                "<b>Clubs dominants :</b><br>%{customdata[0]}"
-                "<extra></extra>"
-            )
-        )
-        fig.update_layout(
-            margin=dict(l=0, r=0, t=10, b=0), height=480,
-            legend_title_text="Confédération",
-        )
+            if st.button("← Retour à la carte du monde"):
+                st.session_state.nat_selected_iso3 = None
+                st.rerun()
 
-        event = st.plotly_chart(
-            fig, use_container_width=True, on_select="rerun", key="worldmap_national"
-        )
-
-        selected_iso3 = None
-        if event and event.get("selection", {}).get("points"):
-            selected_iso3 = event["selection"]["points"][0].get("location")
-
-        st.divider()
-        if selected_iso3:
-            candidates = sorted(map_df.loc[map_df["Iso3"] == selected_iso3, "Pays_label"]
-                                 .iloc[0].split(" / "))
             if len(candidates) > 1:
                 chosen_country = st.selectbox(
                     "Plusieurs championnats partagent ce territoire — choisissez lequel afficher :",
@@ -317,7 +269,7 @@ with tab_carte:
 
             clubs_df = source_df[source_df["Pays"] == chosen_country].copy()
             clubs_df["MarkerColor"] = clubs_df["_color"].map(
-                lambda c: COLOR_LEGEND.get(c, COLOR_LEGEND["NONE"])["marker"]
+                lambda c: COLOR_LEGEND[classify_color(c)]["marker"]
             )
             clubs_df["HoverText"] = clubs_df.apply(make_hover_text, axis=1)
 
@@ -341,10 +293,74 @@ with tab_carte:
                 showocean=True, oceancolor="#dce6f2",
                 showlakes=False,
             )
-            geo_fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=480)
+            geo_fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=560)
             st.plotly_chart(geo_fig, use_container_width=True, key=f"countrymap_{chosen_country}")
             st.caption("Survolez un point pour voir le détail du club.")
+
+        # -------- VUE MONDE (par défaut) --------
         else:
+            st.caption(
+                "Cliquez sur un pays pour zoomer et voir chaque club positionné "
+                "sur la carte. Écosse, Pays de Galles et Irlande du Nord n'ayant "
+                "pas de code ISO propre, ils sont affichés sur le même polygone "
+                "que le Royaume-Uni (Angleterre) sur la carte du monde uniquement "
+                "— leurs palmarès restent séparés dans les données et sur la "
+                "carte pays."
+            )
+
+            # Agrégation par code ISO3 (plusieurs 'Pays' peuvent partager un ISO3)
+            agg_rows = []
+            for iso3, grp in source_df.groupby("Iso3"):
+                pays_list = sorted(grp["Pays"].unique())
+                top3 = (
+                    grp.groupby("Club")["Nb_titres"].max()
+                    .sort_values(ascending=False)
+                    .head(3)
+                )
+                top3_txt = "<br>".join(f"• {c} ({int(t)} titres)" for c, t in top3.items())
+                agg_rows.append({
+                    "Iso3": iso3,
+                    "Pays_label": " / ".join(pays_list),
+                    "Continent": grp["Continent"].iloc[0],
+                    "Nb_clubs": grp["Club"].nunique(),
+                    "Nb_titres_total": int(grp["Nb_titres"].sum()),
+                    "Top3": top3_txt,
+                })
+            map_df = pd.DataFrame(agg_rows)
+
+            fig = px.choropleth(
+                map_df,
+                locations="Iso3",
+                color="Continent",
+                hover_name="Pays_label",
+                custom_data=["Top3", "Nb_clubs", "Nb_titres_total"],
+                color_discrete_map=CONTINENT_COLORS,
+                category_orders={"Continent": list(CONTINENT_COLORS.keys())},
+            )
+            fig.update_traces(
+                hovertemplate=(
+                    "<b>%{hovertext}</b><br>"
+                    "Clubs recensés : %{customdata[1]}<br>"
+                    "Titres cumulés : %{customdata[2]}<br>"
+                    "<b>Clubs dominants :</b><br>%{customdata[0]}"
+                    "<extra></extra>"
+                )
+            )
+            fig.update_layout(
+                margin=dict(l=0, r=0, t=10, b=0), height=560,
+                legend_title_text="Confédération",
+            )
+
+            event = st.plotly_chart(
+                fig, use_container_width=True, on_select="rerun", key="worldmap_national"
+            )
+
+            if event and event.get("selection", {}).get("points"):
+                clicked_iso3 = event["selection"]["points"][0].get("location")
+                if clicked_iso3:
+                    st.session_state.nat_selected_iso3 = clicked_iso3
+                    st.rerun()
+
             st.info("Cliquez sur un pays de la carte pour afficher ses clubs positionnés géographiquement.")
 
 # ========================================================================

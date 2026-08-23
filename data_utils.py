@@ -117,6 +117,31 @@ CONTINENT_COLORS = {
 }
 
 
+def classify_color(hex_code: str) -> str:
+    """
+    Retourne la clé COLOR_LEGEND correspondant à un code couleur, en
+    tolérant les nuances légèrement différentes (ex: un bleu choisi à la
+    main dans Excel qui n'est pas exactement 0070C0). Si la couleur est
+    trop éloignée de toutes les couleurs connues, retourne 'NONE'.
+    """
+    if hex_code == "NONE" or not hex_code:
+        return "NONE"
+    if hex_code in COLOR_LEGEND:
+        return hex_code
+    try:
+        r, g, b = int(hex_code[0:2], 16), int(hex_code[2:4], 16), int(hex_code[4:6], 16)
+    except (ValueError, IndexError):
+        return "NONE"
+    known = {"FF0000": (255, 0, 0), "00B050": (0, 176, 80),
+             "0070C0": (0, 112, 192), "FF9900": (255, 153, 0)}
+    best_key, best_dist = "NONE", 60  # seuil de tolérance
+    for key, (kr, kg, kb) in known.items():
+        dist = ((r - kr) ** 2 + (g - kg) ** 2 + (b - kb) ** 2) ** 0.5
+        if dist < best_dist:
+            best_dist, best_key = dist, key
+    return best_key
+
+
 def _cell_color(cell) -> str:
     """Retourne le code couleur ARGB (sans alpha) d'une cellule, ou 'NONE'."""
     try:
@@ -221,7 +246,7 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
     unified["Iso3"] = unified["Pays"].map(COUNTRY_TO_ISO3)
     unified["Continent"] = unified["Pays"].map(COUNTRY_TO_CONTINENT)
     unified["Statut"] = unified["_color"].map(
-        lambda c: COLOR_LEGEND.get(c, COLOR_LEGEND["NONE"])["label"]
+        lambda c: COLOR_LEGEND[classify_color(c)]["label"]
     )
     return unified
 
