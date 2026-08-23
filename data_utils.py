@@ -75,6 +75,47 @@ COUNTRY_TO_ISO3 = {
     "Uruguay": "URY",
 }
 
+# ------------------------------------------------------------------
+# Continent / confédération footballistique de chaque pays, pour la
+# coloration de la carte. Regroupement par confédération plutôt que
+# par pure géographie (ex. l'Australie appartient à l'AFC, la
+# confédération asiatique, et non à l'Océanie footballistique ;
+# Israël et la Turquie sont rattachés à l'UEFA).
+# ------------------------------------------------------------------
+COUNTRY_TO_CONTINENT = {
+    "Afrique du Sud": "Afrique", "Égypte": "Afrique",
+
+    "Allemagne": "Europe", "Angleterre": "Europe", "Autriche": "Europe",
+    "Belgique": "Europe", "Biélorussie": "Europe", "Bulgarie": "Europe",
+    "Croatie": "Europe", "Danemark": "Europe", "Écosse": "Europe",
+    "Espagne": "Europe", "Finlande": "Europe", "France": "Europe",
+    "Gibraltar": "Europe", "Grèce": "Europe", "Hongrie": "Europe",
+    "Irlande": "Europe", "Irlande du Nord": "Europe", "Islande": "Europe",
+    "Israël": "Europe", "Italie": "Europe", "Lettonie": "Europe",
+    "Lituanie": "Europe", "Norvège": "Europe", "Pays de Galles": "Europe",
+    "Pays-Bas": "Europe", "Pologne": "Europe", "Portugal": "Europe",
+    "République Tchèque": "Europe", "Roumanie": "Europe", "Russie": "Europe",
+    "Serbie": "Europe", "Slovaquie": "Europe", "Slovénie": "Europe",
+    "Suède": "Europe", "Suisse": "Europe", "Turquie": "Europe",
+    "Ukraine": "Europe",
+
+    "Argentine": "Amériques", "Brésil": "Amériques", "Canada": "Amériques",
+    "Chili": "Amériques", "Colombie": "Amériques", "États-Unis": "Amériques",
+    "Mexique": "Amériques", "Pérou": "Amériques", "Uruguay": "Amériques",
+
+    "Australie": "Asie", "Chine": "Asie", "Corée du Sud": "Asie",
+    "Émirats Arabes Unis": "Asie", "Hong Kong": "Asie", "Inde": "Asie",
+    "Indonésie": "Asie", "Japon": "Asie", "Malaisie": "Asie",
+    "Singapour": "Asie",
+}
+
+CONTINENT_COLORS = {
+    "Europe": "#2563EB",     # bleu vif
+    "Amériques": "#DC2626",  # rouge vif
+    "Afrique": "#D97706",    # orange/ambre vif
+    "Asie": "#16A34A",       # vert vif
+}
+
 
 def _cell_color(cell) -> str:
     """Retourne le code couleur ARGB (sans alpha) d'une cellule, ou 'NONE'."""
@@ -135,7 +176,7 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 "Niveau de la division": "Niveau_division",
                 "Nombre de finales perdues": "Nb_finales_perdues",
             })
-             d["Annee_dernier_titre"] = None
+            d["Annee_dernier_titre"] = None
             d["Nb_titres"] = None
             if "Pays" not in d.columns:
                 d["Pays"] = None  # feuille sans colonne Pays (ancienne version)
@@ -174,6 +215,7 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
     unified = pd.concat(frames, ignore_index=True)
     unified["Iso3"] = unified["Pays"].map(COUNTRY_TO_ISO3)
+    unified["Continent"] = unified["Pays"].map(COUNTRY_TO_CONTINENT)
     unified["Statut"] = unified["_color"].map(
         lambda c: COLOR_LEGEND.get(c, COLOR_LEGEND["NONE"])["label"]
     )
