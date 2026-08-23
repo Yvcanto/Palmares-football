@@ -182,6 +182,8 @@ with tab_carte:
         )
 
         winners = df_c1.copy()
+        winners["_prio"] = (winners["_color"].map(classify_color) != "NONE").astype(int)
+        winners = winners.sort_values("_prio")  # points colorés dessinés en dernier = au-dessus
         winners["MarkerColor"] = winners["_color"].map(
             lambda c: COLOR_LEGEND[classify_color(c)]["marker"]
         )
@@ -275,6 +277,8 @@ with tab_carte:
             st.caption("⭕ Contour rouge épais = division trop basse pour être jouable dans FM26.")
 
             clubs_df = source_df[source_df["Pays"] == chosen_country].copy()
+            clubs_df["_prio"] = (clubs_df["_color"].map(classify_color) != "NONE").astype(int)
+            clubs_df = clubs_df.sort_values("_prio")  # points colorés dessinés en dernier = au-dessus
             clubs_df["MarkerColor"] = clubs_df["_color"].map(
                 lambda c: COLOR_LEGEND[classify_color(c)]["marker"]
             )
