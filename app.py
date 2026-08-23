@@ -380,41 +380,103 @@ with tab_carte:
 # ONGLET 2 — COMPARATEUR DE CLUBS
 # ========================================================================
 with tab_compare:
-    st.subheader("Comparer le nombre de titres nationaux entre plusieurs clubs")
-
-    all_clubs = sorted(df_national["Club"].unique())
-    default_selection = all_clubs[:0]
-    selected_clubs = st.multiselect(
-        "Sélectionnez des clubs à comparer", all_clubs, default=default_selection
+    st.subheader("Comparateur de clubs")
+    st.caption(
+        "Comparaison restreinte aux clubs mis en avant par un surlignage "
+        "dans le fichier Excel (les autres clubs sont exclus pour garder "
+        "une comparaison lisible)."
     )
-    include_c1 = st.checkbox("Inclure les titres de Ligue des Champions dans la comparaison", value=True)
 
-    if selected_clubs:
-        nat_titles = (
-            df_national[df_national["Club"].isin(selected_clubs)]
-            .groupby("Club")["Nb_titres"].sum()
-        )
-        rows = []
-        for club in selected_clubs:
-            row = {"Club": club, "Titres nationaux": int(nat_titles.get(club, 0))}
-            if include_c1:
-                c1_val = df_c1.loc[df_c1["Club"] == club, "Nb_titres"]
-                row["Titres Ligue des Champions"] = int(c1_val.sum()) if not c1_val.empty else 0
-            rows.append(row)
-        comp_df = pd.DataFrame(rows)
+    compare_mode = st.radio(
+        "Type de comparaison",
+        [
+            "🔵 Clubs à la division la plus basse (bleu + orange)",
+            "🟢 Clubs au titre le plus ancien (vert + orange)",
+        ],
+    )
 
-        value_cols = ["Titres nationaux"] + (["Titres Ligue des Champions"] if include_c1 else [])
-        melted = comp_df.melt(id_vars="Club", value_vars=value_cols,
-                               var_name="Compétition", value_name="Titres")
-        fig_cmp = px.bar(
-            melted, x="Club", y="Titres", color="Compétition",
-            barmode="group", text="Titres",
-        )
-        fig_cmp.update_layout(height=450, legend_title="")
-        st.plotly_chart(fig_cmp, use_container_width=True)
-        st.dataframe(comp_df.set_index("Club"), use_container_width=True)
+    df_national_c = df_national.copy()
+    df_national_c["Classified"] = df_national_c["_color"].map(classify_color)
+
+    if compare_mode.startswith("🔵"):
+        pool = df_national_c[df_national_c["Classified"].isin(["0070C0", "FF9900"])].copy()
+        criterion_note = "Regroupe les clubs surlignés en bleu et en orange (l'orange combinant les deux critères)."
     else:
-        st.info("Choisissez au moins un club dans la liste ci-dessus.")
+        pool = df_national_c[df_national_c["Classified"].isin(["00B050", "FF9900"])].copy()
+        criterion_note = "Regroupe les clubs surlignés en vert et en orange (l'orange combinant les deux critères)."
+
+    st.caption(f"{criterion_note} — {pool['Club'].nunique()} clubs éligibles.")
+
+    all_pool_clubs = sorted(pool["Club"].unique())
+    selected_clubs = st.multiselect(
+        "Restreindre la comparaison à certains clubs (laisser vide pour tous les afficher)",
+        all_pool_clubs,
+    )
+    compare_df = pool[pool["Club"].isin(selected_clubs)] if selected_clubs else pool
+    compare_df = compare_df.drop_duplicates(subset="Club").set_index("Club")
+
+    if compare_df.empty:
+        st.info("Aucun club à afficher.")
+    else:
+        compare_df["Titres_C1"] = compare_df.index.map(
+            lambda club: int(df_c1.loc[df_c1["Club"] == club, "Nb_titres"].sum())
+        )
+        compare_df["CouleurBarre"] = compare_df["Classified"].map(
+            lambda c: COLOR_LEGEND[c]["marker"]
+        )
+        compare_df = compare_df.sort_values("Niveau_division")
+
+        st.markdown("#### Niveau de division actuel (1 = plus haut niveau du pays)")
+        fig_niveau = px.bar(
+            compare_df.reset_index(), x="Club", y="Niveau_division",
+            color="Club", color_discrete_map=dict(zip(compare_df.index, compare_df["CouleurBarre"])),
+        )
+        fig_niveau.update_layout(height=380, showlegend=False, yaxis_title="Niveau de division")
+        st.plotly_chart(fig_niveau, use_container_width=True)
+
+        st.markdown("#### Année du dernier titre national (frise chronologique)")
+        timeline_df = compare_df.reset_index().sort_values("Annee_dernier_titre")
+        fig_timeline = px.scatter(
+            timeline_df, x="Annee_dernier_titre", y="Club",
+            color="Club", color_discrete_map=dict(zip(compare_df.index, compare_df["CouleurBarre"])),
+        )
+        fig_timeline.update_traces(marker=dict(size=14, line=dict(width=1, color="#444444")))
+        fig_timeline.update_layout(
+            height=max(320, 28 * len(timeline_df)), showlegend=False,
+            xaxis_title="Année du dernier titre",
+        )
+        st.plotly_chart(fig_timeline, use_container_width=True)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### Nombre de titres nationaux")
+            fig_nat = px.bar(
+                compare_df.reset_index().sort_values("Nb_titres"),
+                x="Nb_titres", y="Club", orientation="h",
+                color="Club", color_discrete_map=dict(zip(compare_df.index, compare_df["CouleurBarre"])),
+            )
+            fig_nat.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False)
+            st.plotly_chart(fig_nat, use_container_width=True)
+        with col2:
+            st.markdown("#### Nombre de titres de Ligue des Champions")
+            fig_c1 = px.bar(
+                compare_df.reset_index().sort_values("Titres_C1"),
+                x="Titres_C1", y="Club", orientation="h",
+                color="Club", color_discrete_map=dict(zip(compare_df.index, compare_df["CouleurBarre"])),
+            )
+            fig_c1.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False)
+            st.plotly_chart(fig_c1, use_container_width=True)
+
+        st.divider()
+        st.dataframe(
+            compare_df[["Pays", "Division_actuelle", "Niveau_division", "Annee_dernier_titre", "Nb_titres", "Titres_C1"]]
+            .rename(columns={
+                "Division_actuelle": "Division actuelle", "Niveau_division": "Niveau",
+                "Annee_dernier_titre": "Dernier titre", "Nb_titres": "Titres nationaux",
+                "Titres_C1": "Titres C1",
+            }),
+            use_container_width=True,
+        )
 
 # ========================================================================
 # ONGLET 3 — STATISTIQUES GLOBALES
