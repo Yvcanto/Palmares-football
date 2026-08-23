@@ -16,6 +16,7 @@ import streamlit as st
 
 from data_utils import (
     COLOR_LEGEND,
+    CONTINENT_COLORS,
     HEADER_COLOR,
     SHEET_C1,
     SHEET_FINALISTES,
@@ -166,6 +167,7 @@ with tab_carte:
         agg_rows.append({
             "Iso3": iso3,
             "Pays_label": " / ".join(pays_list),
+            "Continent": grp["Continent"].iloc[0],
             "Nb_clubs": grp["Club"].nunique(),
             "Nb_titres_total": int(grp["Nb_titres"].sum()),
             "Top3": top3_txt,
@@ -175,11 +177,11 @@ with tab_carte:
     fig = px.choropleth(
         map_df,
         locations="Iso3",
-        color="Nb_titres_total",
+        color="Continent",
         hover_name="Pays_label",
         custom_data=["Top3", "Nb_clubs", "Nb_titres_total"],
-        color_continuous_scale="Blues",
-        labels={"Nb_titres_total": "Titres cumulés"},
+        color_discrete_map=CONTINENT_COLORS,
+        category_orders={"Continent": list(CONTINENT_COLORS.keys())},
     )
     fig.update_traces(
         hovertemplate=(
@@ -190,7 +192,10 @@ with tab_carte:
             "<extra></extra>"
         )
     )
-    fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=520)
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=10, b=0), height=520,
+        legend_title_text="Confédération",
+    )
 
     event = st.plotly_chart(
         fig, use_container_width=True, on_select="rerun", key="worldmap"
