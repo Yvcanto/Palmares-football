@@ -135,9 +135,10 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 "Niveau de la division": "Niveau_division",
                 "Nombre de finales perdues": "Nb_finales_perdues",
             })
-            d["Annee_dernier_titre"] = None
+             d["Annee_dernier_titre"] = None
             d["Nb_titres"] = None
-            d["Pays"] = None
+            if "Pays" not in d.columns:
+                d["Pays"] = None  # feuille sans colonne Pays (ancienne version)
             d["Categorie"] = "Finalistes C1"
 
         elif sheetname == SHEET_C1:
