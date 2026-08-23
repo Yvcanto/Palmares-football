@@ -153,11 +153,28 @@ def _cell_color(cell) -> str:
     return rgb[-6:]  # on retire les 2 caractères d'alpha en tête
 
 
+def _is_red_font(cell) -> bool:
+    """
+    True si le texte de la cellule est en police rouge — convention du
+    fichier pour signaler un club dont la division est trop basse pour
+    être jouable dans FM26.
+    """
+    try:
+        rgb = cell.font.color.rgb
+    except AttributeError:
+        return False
+    if not isinstance(rgb, str):
+        return False
+    return rgb[-6:] == "FF0000"
+
+
 def load_workbook_dataframes(path: str) -> dict[str, pd.DataFrame]:
     """
     Lit toutes les feuilles du classeur et retourne un dict
-    {nom_de_feuille: DataFrame}, chaque DataFrame incluant une colonne
-    technique '_color' avec le code couleur de surlignage de la ligne.
+    {nom_de_feuille: DataFrame}, chaque DataFrame incluant deux colonnes
+    techniques : '_color' (couleur de surlignage de fond de la ligne) et
+    '_non_jouable' (True si le nom du club est écrit en police rouge,
+    signalant un club dont la division est trop basse pour FM26).
     """
     wb = openpyxl.load_workbook(path, data_only=True)
     sheets = {}
@@ -170,8 +187,9 @@ def load_workbook_dataframes(path: str) -> dict[str, pd.DataFrame]:
                 continue
             values = [c.value for c in row]
             color = _cell_color(row[0])
-            rows.append(values + [color])
-        df = pd.DataFrame(rows, columns=headers + ["_color"])
+            non_jouable = _is_red_font(row[0])
+            rows.append(values + [color, non_jouable])
+        df = pd.DataFrame(rows, columns=headers + ["_color", "_non_jouable"])
         sheets[sheetname] = df
     return sheets
 
@@ -239,7 +257,7 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
         frames.append(d[[
             "Club", "Division_actuelle", "Niveau_division",
             "Annee_dernier_titre", "Nb_titres", "Nb_finales_perdues",
-            "Pays", "Source", "Categorie", "_color", "Latitude", "Longitude",
+            "Pays", "Source", "Categorie", "_color", "_non_jouable", "Latitude", "Longitude",
         ]])
 
     unified = pd.concat(frames, ignore_index=True)

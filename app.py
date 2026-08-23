@@ -155,13 +155,16 @@ with tab_carte:
     )
 
     def make_hover_text(r):
-        return (
+        txt = (
             f"<b>{r['Club']}</b><br>"
             f"Division : {r['Division_actuelle']}<br>"
             f"Dernier titre : {r['Annee_dernier_titre']}<br>"
             f"Titres : {r['Nb_titres']}<br>"
             f"{r['Statut']}"
         )
+        if r.get("_non_jouable"):
+            txt += "<br><span style='color:#B91C1C'><b>Non jouable en FM26</b></span>"
+        return txt
 
     # --------------------------------------------------------------
     # MODE "Ligue des Champions" : carte d'Europe directe, navigable,
@@ -182,6 +185,9 @@ with tab_carte:
         winners["MarkerColor"] = winners["_color"].map(
             lambda c: COLOR_LEGEND[classify_color(c)]["marker"]
         )
+        winners["OutlineColor"] = winners["_non_jouable"].map(
+            lambda x: "#B91C1C" if x else "#444444"
+        )
         winners["HoverText"] = winners.apply(make_hover_text, axis=1)
 
         geo_fig = go.Figure()
@@ -192,7 +198,7 @@ with tab_carte:
             marker=dict(
                 size=11, symbol="circle",
                 color=winners["MarkerColor"],
-                line=dict(width=1, color="#444444"),
+                line=dict(width=1.6, color=winners["OutlineColor"]),
             ),
         ))
 
@@ -266,10 +272,17 @@ with tab_carte:
 
             st.markdown(f"### {chosen_country} — championnat national")
             show_color_legend()
+            st.caption("⭕ Contour rouge épais = division trop basse pour être jouable dans FM26.")
 
             clubs_df = source_df[source_df["Pays"] == chosen_country].copy()
             clubs_df["MarkerColor"] = clubs_df["_color"].map(
                 lambda c: COLOR_LEGEND[classify_color(c)]["marker"]
+            )
+            clubs_df["OutlineColor"] = clubs_df["_non_jouable"].map(
+                lambda x: "#B91C1C" if x else "#444444"
+            )
+            clubs_df["OutlineWidth"] = clubs_df["_non_jouable"].map(
+                lambda x: 3 if x else 1
             )
             clubs_df["HoverText"] = clubs_df.apply(make_hover_text, axis=1)
 
@@ -282,7 +295,7 @@ with tab_carte:
                 marker=dict(
                     size=11,
                     color=clubs_df["MarkerColor"],
-                    line=dict(width=1, color="#444444"),
+                    line=dict(width=clubs_df["OutlineWidth"], color=clubs_df["OutlineColor"]),
                 ),
             ))
             geo_fig.update_geos(
