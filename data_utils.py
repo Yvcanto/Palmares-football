@@ -35,11 +35,11 @@ SHEET_C1 = "Ligue des Champions"
 # le préfixe alpha '00').
 # ------------------------------------------------------------------
 COLOR_LEGEND = {
-    "FF0000": {"label": "Club disparu", "hex": "#FF0000"},
-    "00B050": {"label": "Ancien champion dont le dernier titre est le plus ancien", "hex": "#00B050"},
-    "0070C0": {"label": "Ancien champion évoluant au niveau de division le plus bas disponible", "hex": "#0070C0"},
-    "FF9900": {"label": "Ancien champion au niveau de division le plus bas et dont le dernier titre est le plus ancien", "hex": "#FF9900"},
-    "NONE": {"label": "Sans surlignage", "hex": "#FFFFFF"},
+    "FF0000": {"label": "Club disparu", "hex": "#FF0000", "marker": "#FF0000"},
+    "00B050": {"label": "Ancien champion dont le dernier titre est le plus ancien", "hex": "#00B050", "marker": "#00B050"},
+    "0070C0": {"label": "Ancien champion évoluant au niveau de division le plus bas disponible", "hex": "#0070C0", "marker": "#0070C0"},
+    "FF9900": {"label": "Ancien champion au niveau de division le plus bas et dont le dernier titre est le plus ancien", "hex": "#FF9900", "marker": "#FF9900"},
+    "NONE": {"label": "Sans surlignage", "hex": "#FFFFFF", "marker": "#1A1A1A"},
 }
 
 # En-tête (couleur du bandeau de titre) telle que définie dans Excel
@@ -207,10 +207,14 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
             d["Categorie"] = "Championnat national"
 
         d["Source"] = sheetname
+        if "Latitude" not in d.columns:
+            d["Latitude"] = None
+        if "Longitude" not in d.columns:
+            d["Longitude"] = None
         frames.append(d[[
             "Club", "Division_actuelle", "Niveau_division",
             "Annee_dernier_titre", "Nb_titres", "Nb_finales_perdues",
-            "Pays", "Source", "Categorie", "_color",
+            "Pays", "Source", "Categorie", "_color", "Latitude", "Longitude",
         ]])
 
     unified = pd.concat(frames, ignore_index=True)
