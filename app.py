@@ -411,17 +411,79 @@ with tab_compare:
 
     st.caption(f"{criterion_note} — {pool['Club'].nunique()} clubs éligibles.")
 
-    all_pool_clubs = sorted(pool["Club"].unique())
-    selected_clubs = st.multiselect(
-        "Restreindre la comparaison à certains clubs (laisser vide pour tous les afficher)",
-        all_pool_clubs,
-    )
-    compare_df = pool[pool["Club"].isin(selected_clubs)] if selected_clubs else pool
+    def filter_block(label, col_name, min_val, max_val, key_prefix, is_year=False):
+        op = st.selectbox(
+            label,
+            ["Peu importe", "Inférieur à", "Supérieur à", "Entre"],
+            key=f"{key_prefix}_op",
+        )
+        step = 1
+        if op == "Peu importe":
+            return None
+        elif op == "Inférieur à":
+            val = st.number_input("Valeur", min_value=min_val, max_value=max_val,
+                                   value=max_val, step=step, key=f"{key_prefix}_v1")
+            return ("lt", val)
+        elif op == "Supérieur à":
+            val = st.number_input("Valeur", min_value=min_val, max_value=max_val,
+                                   value=min_val, step=step, key=f"{key_prefix}_v1")
+            return ("gt", val)
+        else:  # Entre
+            c1, c2 = st.columns(2)
+            v1 = c1.number_input("De", min_value=min_val, max_value=max_val,
+                                  value=min_val, step=step, key=f"{key_prefix}_v1")
+            v2 = c2.number_input("À", min_value=min_val, max_value=max_val,
+                                  value=max_val, step=step, key=f"{key_prefix}_v2")
+            return ("between", v1, v2)
+
+    def apply_filter(series, filt):
+        if filt is None:
+            return pd.Series(True, index=series.index)
+        if filt[0] == "lt":
+            return series < filt[1]
+        if filt[0] == "gt":
+            return series > filt[1]
+        return (series >= filt[1]) & (series <= filt[2])
+
+    year_min = int(pool["Annee_dernier_titre"].min())
+    year_max = int(pool["Annee_dernier_titre"].max())
+    niveau_min = int(pool["Niveau_division"].min())
+    niveau_max = int(pool["Niveau_division"].max())
+    titres_min = int(pool["Nb_titres"].min())
+    titres_max = int(pool["Nb_titres"].max())
+
+    st.markdown("#### Critères de sélection")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Année du dernier titre**")
+        filt_year = filter_block("Filtre année", "Annee_dernier_titre", year_min, year_max, "year")
+    with col2:
+        st.markdown("**Niveau de division**")
+        filt_niveau = filter_block("Filtre niveau", "Niveau_division", niveau_min, niveau_max, "niveau")
+    with col3:
+        st.markdown("**Nombre de titres nationaux**")
+        filt_titres = filter_block("Filtre titres", "Nb_titres", titres_min, titres_max, "titres")
+
+    if filt_year is None and filt_niveau is None and filt_titres is None:
+        st.info("Choisissez au moins un critère ci-dessus pour afficher des clubs à comparer.")
+        compare_df = pool.iloc[0:0]  # vide
+    else:
+        mask = (
+            apply_filter(pool["Annee_dernier_titre"], filt_year)
+            & apply_filter(pool["Niveau_division"], filt_niveau)
+            & apply_filter(pool["Nb_titres"], filt_titres)
+        )
+        compare_df = pool[mask].copy()
+
     compare_df = compare_df.drop_duplicates(subset="Club").set_index("Club")
 
+    st.divider()
+
     if compare_df.empty:
-        st.info("Aucun club à afficher.")
+        if filt_year is not None or filt_niveau is not None or filt_titres is not None:
+            st.info("Aucun club ne correspond à ces critères.")
     else:
+        st.caption(f"{len(compare_df)} club(s) correspondant aux critères.")
         compare_df["Titres_C1"] = compare_df.index.map(
             lambda club: int(df_c1.loc[df_c1["Club"] == club, "Nb_titres"].sum())
         )
