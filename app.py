@@ -443,7 +443,7 @@ with tab_compare:
         return (series >= filt[1]) & (series <= filt[2])
 
     year_options = sorted(pool["Annee_dernier_titre"].dropna().unique().astype(int).tolist())
-    niveau_options = sorted(pool["Niveau_division"].dropna().unique().astype(int).tolist())
+    niveau_options = list(range(1, 9))  # 1 à 8 fixe, même si tous les niveaux ne sont pas encore utilisés (pays/clubs futurs)
     titres_options = sorted(pool["Nb_titres"].dropna().unique().astype(int).tolist())
     niveau_labels = {
         v: f"Niveau {v}" + (" (le plus haut)" if v == min(niveau_options)
