@@ -263,6 +263,10 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
     unified = pd.concat(frames, ignore_index=True)
     unified["Iso3"] = unified["Pays"].map(COUNTRY_TO_ISO3)
     unified["Continent"] = unified["Pays"].map(COUNTRY_TO_CONTINENT)
+    # Entier nullable : évite d'afficher "1.0" au lieu de "1" (il n'y a pas
+    # de demi-niveau de division), tout en gardant les valeurs vides (clubs
+    # disparus sans niveau connu) sous forme de <NA> plutôt que 0.
+    unified["Niveau_division"] = unified["Niveau_division"].astype("Int64")
     unified["Statut"] = unified["_color"].map(
         lambda c: COLOR_LEGEND[classify_color(c)]["label"]
     )

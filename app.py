@@ -548,47 +548,81 @@ with tab_compare:
 # ONGLET 3 — STATISTIQUES GLOBALES
 # ========================================================================
 with tab_stats:
-    st.subheader("Clubs les plus titrés toutes compétitions confondues (C1 + championnats nationaux)")
+    st.subheader("Club le plus titré par pays")
 
-    nat_sum = df_national.groupby("Club")["Nb_titres"].sum().rename("Titres_nationaux")
-    c1_sum = df_c1.groupby("Club")["Nb_titres"].sum().rename("Titres_C1")
-    total = pd.concat([nat_sum, c1_sum], axis=1).fillna(0)
-    total["Total"] = total["Titres_nationaux"] + total["Titres_C1"]
-    total = total.sort_values("Total", ascending=False)
-
-    top_n = st.slider("Nombre de clubs à afficher", 5, 30, 15)
-    top_total = total.head(top_n).reset_index().rename(columns={"index": "Club"})
-
-    fig_top = px.bar(
-        top_total.sort_values("Total"),
-        x="Total", y="Club", orientation="h",
-        hover_data=["Titres_nationaux", "Titres_C1"],
-        color="Total", color_continuous_scale="Oranges",
-    )
-    fig_top.update_layout(height=max(400, 28 * top_n), showlegend=False,
-                           coloraxis_showscale=False)
-    st.plotly_chart(fig_top, use_container_width=True)
-
-    st.dataframe(
-        top_total.rename(columns={
-            "Titres_nationaux": "Titres nationaux",
-            "Titres_C1": "Titres Ligue des Champions",
-        }).set_index("Club"),
-        use_container_width=True,
+    stat_mode = st.radio(
+        "Afficher",
+        ["Championnat national", "Ligue des Champions", "Les deux"],
+        horizontal=True,
     )
 
-    st.divider()
-    st.subheader("Finalistes malheureux de la Ligue des Champions")
-    show_color_legend()
-    render_styled_table(
-        df_finalistes.sort_values("Nb_finales_perdues", ascending=False),
-        [
-            ("Club", "Club"),
-            ("Division_actuelle", "Division actuelle"),
-            ("Niveau_division", "Niveau"),
-            ("Nb_finales_perdues", "Finales perdues"),
-        ],
+    COLOR_CHAMP = "#2563EB"  # bleu — championnat national
+    COLOR_LDC = "#D97706"    # orange — Ligue des Champions
+
+    # Titres nationaux par club+pays (le plus titré de chaque pays)
+    nat_best = (
+        df_national.loc[df_national.groupby("Pays")["Nb_titres"].idxmax()]
+        [["Pays", "Club", "Nb_titres"]]
+        .rename(columns={"Nb_titres": "Titres_nat"})
     )
+    # Titres C1 par club (peut y avoir plusieurs clubs vainqueurs par pays ; on garde le plus titré)
+    c1_best = (
+        df_c1.loc[df_c1.groupby("Pays")["Nb_titres"].idxmax()]
+        [["Pays", "Club", "Nb_titres"]]
+        .rename(columns={"Nb_titres": "Titres_c1", "Club": "Club_c1"})
+    )
+
+    if stat_mode == "Championnat national":
+        chart_df = nat_best.copy()
+        chart_df["Label"] = chart_df["Pays"] + " — " + chart_df["Club"]
+        chart_df = chart_df.sort_values("Titres_nat")
+        fig = go.Figure(go.Bar(
+            x=chart_df["Titres_nat"], y=chart_df["Label"], orientation="h",
+            marker_color=COLOR_CHAMP,
+            text=chart_df["Titres_nat"], textposition="outside",
+        ))
+        fig.update_layout(height=max(500, 24 * len(chart_df)), xaxis_title="Titres nationaux")
+        st.plotly_chart(fig, use_container_width=True)
+
+    elif stat_mode == "Ligue des Champions":
+        chart_df = c1_best.rename(columns={"Club_c1": "Club"}).copy()
+        chart_df["Label"] = chart_df["Pays"] + " — " + chart_df["Club"]
+        chart_df = chart_df.sort_values("Titres_c1")
+        fig = go.Figure(go.Bar(
+            x=chart_df["Titres_c1"], y=chart_df["Label"], orientation="h",
+            marker_color=COLOR_LDC,
+            text=chart_df["Titres_c1"], textposition="outside",
+        ))
+        fig.update_layout(height=max(400, 24 * len(chart_df)), xaxis_title="Titres de Ligue des Champions")
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:  # Les deux — club le plus titré (national + C1 combinés) par pays, barre empilée
+        c1_by_club = df_c1.groupby(["Pays", "Club"])["Nb_titres"].sum().rename("Titres_c1_club")
+        combo = df_national.groupby(["Pays", "Club"])["Nb_titres"].sum().rename("Titres_nat_club").reset_index()
+        combo = combo.merge(c1_by_club, on=["Pays", "Club"], how="left")
+        combo["Titres_c1_club"] = combo["Titres_c1_club"].fillna(0)
+        combo["Total"] = combo["Titres_nat_club"] + combo["Titres_c1_club"]
+        chart_df = combo.loc[combo.groupby("Pays")["Total"].idxmax()].copy()
+        chart_df["Label"] = chart_df["Pays"] + " — " + chart_df["Club"]
+        chart_df = chart_df.sort_values("Total")
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=chart_df["Titres_nat_club"], y=chart_df["Label"], orientation="h",
+            name="Championnat national", marker=dict(color=COLOR_CHAMP, line=dict(width=1.5, color="white")),
+            text=chart_df["Titres_nat_club"], textposition="inside",
+        ))
+        fig.add_trace(go.Bar(
+            x=chart_df["Titres_c1_club"], y=chart_df["Label"], orientation="h",
+            name="Ligue des Champions", marker=dict(color=COLOR_LDC, line=dict(width=1.5, color="white")),
+            text=chart_df["Titres_c1_club"], textposition="inside",
+        ))
+        fig.update_layout(
+            barmode="stack", height=max(500, 24 * len(chart_df)),
+            xaxis_title="Titres (championnat + Ligue des Champions)",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 # ========================================================================
 # ONGLET 4 — DÉTAIL PAR PAYS / FEUILLE (formatage Excel respecté)
