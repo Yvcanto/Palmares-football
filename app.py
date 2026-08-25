@@ -411,30 +411,27 @@ with tab_compare:
 
     st.caption(f"{criterion_note} — {pool['Club'].nunique()} clubs éligibles.")
 
-    def filter_block(label, col_name, min_val, max_val, key_prefix, is_year=False):
+    def filter_block(label, options, key_prefix, invert=False, value_labels=None):
         op = st.selectbox(
             label,
             ["Peu importe", "Inférieur à", "Supérieur à", "Entre"],
             key=f"{key_prefix}_op",
         )
-        step = 1
         if op == "Peu importe":
             return None
-        elif op == "Inférieur à":
-            val = st.number_input("Valeur", min_value=min_val, max_value=max_val,
-                                   value=max_val, step=step, key=f"{key_prefix}_v1")
-            return ("lt", val)
-        elif op == "Supérieur à":
-            val = st.number_input("Valeur", min_value=min_val, max_value=max_val,
-                                   value=min_val, step=step, key=f"{key_prefix}_v1")
-            return ("gt", val)
-        else:  # Entre
+        fmt = (lambda v: value_labels[v]) if value_labels else (lambda v: str(v))
+        if op == "Entre":
             c1, c2 = st.columns(2)
-            v1 = c1.number_input("De", min_value=min_val, max_value=max_val,
-                                  value=min_val, step=step, key=f"{key_prefix}_v1")
-            v2 = c2.number_input("À", min_value=min_val, max_value=max_val,
-                                  value=max_val, step=step, key=f"{key_prefix}_v2")
-            return ("between", v1, v2)
+            v1 = c1.selectbox("De", options, index=0, format_func=fmt, key=f"{key_prefix}_v1")
+            v2 = c2.selectbox("À", options, index=len(options) - 1, format_func=fmt, key=f"{key_prefix}_v2")
+            lo, hi = min(v1, v2), max(v1, v2)
+            return ("between", lo, hi)
+        val = st.selectbox("Valeur", options, format_func=fmt, key=f"{key_prefix}_v1")
+        if op == "Inférieur à":
+            actual_op = "gt" if invert else "lt"
+        else:  # Supérieur à
+            actual_op = "lt" if invert else "gt"
+        return (actual_op, val)
 
     def apply_filter(series, filt):
         if filt is None:
@@ -445,24 +442,27 @@ with tab_compare:
             return series > filt[1]
         return (series >= filt[1]) & (series <= filt[2])
 
-    year_min = int(pool["Annee_dernier_titre"].min())
-    year_max = int(pool["Annee_dernier_titre"].max())
-    niveau_min = int(pool["Niveau_division"].min())
-    niveau_max = int(pool["Niveau_division"].max())
-    titres_min = int(pool["Nb_titres"].min())
-    titres_max = int(pool["Nb_titres"].max())
+    year_options = sorted(pool["Annee_dernier_titre"].dropna().unique().astype(int).tolist())
+    niveau_options = sorted(pool["Niveau_division"].dropna().unique().astype(int).tolist())
+    titres_options = sorted(pool["Nb_titres"].dropna().unique().astype(int).tolist())
+    niveau_labels = {
+        v: f"Niveau {v}" + (" (le plus haut)" if v == min(niveau_options)
+                             else " (le plus bas)" if v == max(niveau_options) else "")
+        for v in niveau_options
+    }
 
     st.markdown("#### Critères de sélection")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("**Année du dernier titre**")
-        filt_year = filter_block("Filtre année", "Annee_dernier_titre", year_min, year_max, "year")
+        filt_year = filter_block("Filtre année", year_options, "year")
     with col2:
         st.markdown("**Niveau de division**")
-        filt_niveau = filter_block("Filtre niveau", "Niveau_division", niveau_min, niveau_max, "niveau")
+        st.caption("« Inférieur » = division plus basse dans la hiérarchie (niveau numérique plus élevé).")
+        filt_niveau = filter_block("Filtre niveau", niveau_options, "niveau", invert=True, value_labels=niveau_labels)
     with col3:
         st.markdown("**Nombre de titres nationaux**")
-        filt_titres = filter_block("Filtre titres", "Nb_titres", titres_min, titres_max, "titres")
+        filt_titres = filter_block("Filtre titres", titres_options, "titres")
 
     if filt_year is None and filt_niveau is None and filt_titres is None:
         st.info("Choisissez au moins un critère ci-dessus pour afficher des clubs à comparer.")
