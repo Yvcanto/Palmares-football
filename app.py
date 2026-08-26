@@ -76,7 +76,8 @@ df_finalistes = df[df["Categorie"] == "Finalistes C1"].copy()
 def render_styled_table(sub_df: pd.DataFrame, columns: list[tuple[str, str]]):
     """
     Affiche un DataFrame sous forme de tableau HTML reproduisant les
-    couleurs de surlignage définies dans le fichier Excel d'origine.
+    couleurs de surlignage définies dans le fichier Excel d'origine,
+    ainsi que la police rouge marquant les clubs non jouables en FM26.
 
     columns : liste de tuples (nom_colonne_df, libellé_affiché)
     """
@@ -88,11 +89,15 @@ def render_styled_table(sub_df: pd.DataFrame, columns: list[tuple[str, str]]):
         bg = meta["hex"]
         font_color = "#FFFFFF" if color_code == "FF0000" else "#000000"
         weight = "bold" if color_code == "FF0000" else "normal"
+        non_jouable = bool(row.get("_non_jouable", False))
         cells = []
         for col, _ in columns:
             val = row.get(col, "")
             val = "" if pd.isna(val) else val
-            cells.append(f"<td>{val}</td>")
+            if col == "Club" and non_jouable:
+                cells.append(f'<td><span style="color:#B91C1C;font-weight:bold;">{val}</span></td>')
+            else:
+                cells.append(f"<td>{val}</td>")
         rows_html.append(
             f'<tr style="background-color:{bg};color:{font_color};'
             f'font-weight:{weight};">' + "".join(cells) + "</tr>"
@@ -123,6 +128,11 @@ def show_color_legend():
         f'margin-right:6px;vertical-align:middle;"></span>'
         f'{meta["label"]}</span>'
         for key, meta in COLOR_LEGEND.items() if key != "NONE"
+    )
+    swatches += (
+        '<span style="display:inline-block;">'
+        '<span style="color:#B91C1C;font-weight:bold;margin-right:6px;">Nom du club</span>'
+        '= non jouable en FM26</span>'
     )
     st.markdown(f"<div style='margin-bottom:8px;'>{swatches}</div>", unsafe_allow_html=True)
 
