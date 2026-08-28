@@ -433,6 +433,13 @@ with tab_compare:
         pool = df_national_c[df_national_c["Classified"].isin(["00B050", "FF9900"])].copy()
         criterion_note = "Regroupe les clubs surlignés en vert et en orange (l'orange combinant les deux critères)."
 
+    continent_choice = st.selectbox(
+        "Continent",
+        ["Tous les continents"] + sorted(pool["Continent"].dropna().unique().tolist()),
+    )
+    if continent_choice != "Tous les continents":
+        pool = pool[pool["Continent"] == continent_choice].copy()
+
     st.caption(f"{criterion_note} — {pool['Club'].nunique()} clubs éligibles.")
 
     def filter_block(label, options, key_prefix, invert=False, value_labels=None):
