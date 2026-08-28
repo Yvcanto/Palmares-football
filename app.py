@@ -557,7 +557,10 @@ with tab_compare:
                 x="Nb_titres", y="ClubLabel", orientation="h",
                 color="ClubLabel", color_discrete_map=label_color_map,
             )
-            fig_nat.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="")
+            fig_nat.update_layout(
+                height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="",
+                xaxis=dict(title="Titres nationaux", dtick=1),
+            )
             st.plotly_chart(fig_nat, use_container_width=True)
         with col2:
             st.markdown("#### Nombre de titres continentaux")
@@ -566,7 +569,11 @@ with tab_compare:
                 x="Titres_Continental", y="ClubLabel", orientation="h",
                 color="ClubLabel", color_discrete_map=label_color_map,
             )
-            fig_c1.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="")
+            max_continental = max(1, int(compare_df["Titres_Continental"].max()))
+            fig_c1.update_layout(
+                height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="",
+                xaxis=dict(title="Titres continentaux", range=[0, max_continental], dtick=1),
+            )
             st.plotly_chart(fig_c1, use_container_width=True)
 
         st.divider()
