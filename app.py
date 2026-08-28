@@ -17,6 +17,7 @@ import streamlit as st
 from data_utils import (
     COLOR_LEGEND,
     CONTINENT_COLORS,
+    CONTINENTAL_COMPETITIONS,
     HEADER_COLOR,
     SHEET_C1,
     SHEET_FINALISTES,
@@ -66,8 +67,8 @@ if xlsx_path is None:
 sheets, df = get_data(xlsx_path)
 
 df_national = df[df["Categorie"] == "Championnat national"].copy()
-df_c1 = df[df["Categorie"] == "Ligue des Champions"].copy()
-df_finalistes = df[df["Categorie"] == "Finalistes C1"].copy()
+df_c1 = df[(df["Categorie"] == "Continental - Vainqueurs") & (df["Competition"] == "Ligue des Champions (UEFA)")].copy()
+df_finalistes = df[(df["Categorie"] == "Continental - Finalistes") & (df["Competition"] == "Ligue des Champions (UEFA)")].copy()
 
 # ----------------------------------------------------------------------
 # Fonctions d'affichage (fidélité au formatage Excel)
@@ -147,9 +148,9 @@ st.caption(
     f"{len(df_c1)} vainqueurs de C1 · {len(df_finalistes)} finalistes malheureux"
 )
 
-tab_carte, tab_compare, tab_stats, tab_pays, tab_data = st.tabs(
+tab_carte, tab_compare, tab_stats, tab_pays = st.tabs(
     ["🗺️ Carte interactive", "⚖️ Comparateur de clubs",
-     "🏆 Statistiques globales", "🔎 Détail par pays", "📄 Données brutes"]
+     "🏆 Statistiques globales", "🔎 Détail par pays"]
 )
 
 # ========================================================================
@@ -160,7 +161,7 @@ with tab_carte:
 
     view_mode = st.radio(
         "Afficher",
-        ["Championnats nationaux", "Ligue des Champions"],
+        ["Championnats nationaux", "Compétitions continentales"],
         horizontal=True,
     )
 
@@ -177,21 +178,28 @@ with tab_carte:
         return txt
 
     # --------------------------------------------------------------
-    # MODE "Ligue des Champions" : carte d'Europe directe, navigable,
-    # avec en option les finalistes malheureux en triangles rouges.
+    # MODE "Compétitions continentales" : carte directe et navigable
+    # de la compétition choisie, avec en option les finalistes
+    # malheureux en triangles rouges.
     # --------------------------------------------------------------
-    if view_mode == "Ligue des Champions":
+    if view_mode == "Compétitions continentales":
+        competition_choice = st.selectbox(
+            "Compétition", list(CONTINENTAL_COMPETITIONS.keys())
+        )
         show_finalistes = st.checkbox(
             "Afficher aussi les finalistes malheureux (triangles rouges)",
             value=True,
         )
         show_color_legend()
         st.caption(
-            "🔺 Triangle rouge = finaliste n'ayant jamais remporté la C1 "
-            "(à ne pas confondre avec le rond rouge 'club disparu')."
+            "🔺 Triangle rouge = finaliste n'ayant jamais remporté cette "
+            "compétition (à ne pas confondre avec le rond rouge 'club disparu')."
         )
 
-        winners = df_c1.copy()
+        winners = df[
+            (df["Categorie"] == "Continental - Vainqueurs")
+            & (df["Competition"] == competition_choice)
+        ].copy()
         winners["_prio"] = (winners["_color"].map(classify_color) != "NONE").astype(int)
         winners = winners.sort_values("_prio")  # points colorés dessinés en dernier = au-dessus
         winners["MarkerColor"] = winners["_color"].map(
@@ -215,7 +223,10 @@ with tab_carte:
         ))
 
         if show_finalistes:
-            finalistes = df_finalistes.copy()
+            finalistes = df[
+                (df["Categorie"] == "Continental - Finalistes")
+                & (df["Competition"] == competition_choice)
+            ].copy()
             finalistes["HoverText"] = finalistes.apply(
                 lambda r: (
                     f"<b>{r['Club']}</b><br>"
@@ -237,9 +248,12 @@ with tab_carte:
 
         all_lats = pd.concat([winners["Latitude"]] + ([finalistes["Latitude"]] if show_finalistes else []))
         all_lons = pd.concat([winners["Longitude"]] + ([finalistes["Longitude"]] if show_finalistes else []))
+        # Bornes calculées dynamiquement selon la compétition (Europe, Amérique
+        # du Sud, Afrique, Asie/Océanie ou Amérique du Nord) plutôt que fixées
+        # sur l'Europe — chaque compétition obtient ainsi un cadrage adapté.
         geo_fig.update_geos(
-            lataxis_range=[max(all_lats.min()-3, -60), min(all_lats.max()+3, 75)],
-            lonaxis_range=[max(all_lons.min()-3, -30), min(all_lons.max()+3, 45)],
+            lataxis_range=[max(all_lats.min() - 3, -60), min(all_lats.max() + 3, 80)],
+            lonaxis_range=[max(all_lons.min() - 3, -180), min(all_lons.max() + 3, 180)],
             visible=True,
             showcountries=True, countrycolor="#999999",
             showland=True, landcolor="#f2f2f2",
@@ -250,7 +264,7 @@ with tab_carte:
             margin=dict(l=0, r=0, t=10, b=0), height=560,
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
         )
-        st.plotly_chart(geo_fig, use_container_width=True, key="c1_europe_map")
+        st.plotly_chart(geo_fig, use_container_width=True, key=f"continental_map_{competition_choice}")
         st.caption("Déplacez-vous et zoomez librement sur la carte. Survolez un point pour voir le détail du club.")
 
     # --------------------------------------------------------------
@@ -494,8 +508,9 @@ with tab_compare:
             st.info("Aucun club ne correspond à ces critères.")
     else:
         st.caption(f"{len(compare_df)} club(s) correspondant aux critères.")
-        compare_df["Titres_C1"] = compare_df.index.map(
-            lambda club: int(df_c1.loc[df_c1["Club"] == club, "Nb_titres"].sum())
+        continental_winners = df[df["Categorie"] == "Continental - Vainqueurs"]
+        compare_df["Titres_Continental"] = compare_df.index.map(
+            lambda club: int(continental_winners.loc[continental_winners["Club"] == club, "Nb_titres"].sum())
         )
         compare_df["CouleurBarre"] = compare_df["Classified"].map(
             lambda c: COLOR_LEGEND[c]["marker"]
@@ -534,10 +549,10 @@ with tab_compare:
             fig_nat.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False)
             st.plotly_chart(fig_nat, use_container_width=True)
         with col2:
-            st.markdown("#### Nombre de titres de Ligue des Champions")
+            st.markdown("#### Nombre de titres continentaux (5 compétitions confondues)")
             fig_c1 = px.bar(
-                compare_df.reset_index().sort_values("Titres_C1"),
-                x="Titres_C1", y="Club", orientation="h",
+                compare_df.reset_index().sort_values("Titres_Continental"),
+                x="Titres_Continental", y="Club", orientation="h",
                 color="Club", color_discrete_map=dict(zip(compare_df.index, compare_df["CouleurBarre"])),
             )
             fig_c1.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False)
@@ -545,11 +560,11 @@ with tab_compare:
 
         st.divider()
         st.dataframe(
-            compare_df[["Pays", "Division_actuelle", "Niveau_division", "Annee_dernier_titre", "Nb_titres", "Titres_C1"]]
+            compare_df[["Pays", "Division_actuelle", "Niveau_division", "Annee_dernier_titre", "Nb_titres", "Titres_Continental"]]
             .rename(columns={
                 "Division_actuelle": "Division actuelle", "Niveau_division": "Niveau",
                 "Annee_dernier_titre": "Dernier titre", "Nb_titres": "Titres nationaux",
-                "Titres_C1": "Titres C1",
+                "Titres_Continental": "Titres continentaux (5 compétitions)",
             }),
             use_container_width=True,
         )
@@ -562,12 +577,18 @@ with tab_stats:
 
     stat_mode = st.radio(
         "Afficher",
-        ["Championnat national", "Ligue des Champions", "Les deux"],
+        ["Championnat national", "Compétition continentale", "Les deux"],
         horizontal=True,
     )
 
+    competition_for_stats = None
+    if stat_mode in ("Compétition continentale", "Les deux"):
+        competition_for_stats = st.selectbox(
+            "Compétition", list(CONTINENTAL_COMPETITIONS.keys()), key="stats_competition"
+        )
+
     COLOR_CHAMP = "#2563EB"  # bleu — championnat national
-    COLOR_LDC = "#D97706"    # orange — Ligue des Champions
+    COLOR_LDC = "#D97706"    # orange — compétition continentale
 
     # Titres nationaux par club+pays (le plus titré de chaque pays)
     nat_best = (
@@ -575,12 +596,18 @@ with tab_stats:
         [["Pays", "Club", "Nb_titres"]]
         .rename(columns={"Nb_titres": "Titres_nat"})
     )
-    # Titres C1 par club (peut y avoir plusieurs clubs vainqueurs par pays ; on garde le plus titré)
-    c1_best = (
-        df_c1.loc[df_c1.groupby("Pays")["Nb_titres"].idxmax()]
-        [["Pays", "Club", "Nb_titres"]]
-        .rename(columns={"Nb_titres": "Titres_c1", "Club": "Club_c1"})
-    )
+
+    if competition_for_stats:
+        continental_df = df[
+            (df["Categorie"] == "Continental - Vainqueurs")
+            & (df["Competition"] == competition_for_stats)
+        ]
+        # Titres par club (peut y avoir plusieurs clubs vainqueurs par pays ; on garde le plus titré)
+        c1_best = (
+            continental_df.loc[continental_df.groupby("Pays")["Nb_titres"].idxmax()]
+            [["Pays", "Club", "Nb_titres"]]
+            .rename(columns={"Nb_titres": "Titres_c1", "Club": "Club_c1"})
+        )
 
     if stat_mode == "Championnat national":
         chart_df = nat_best.copy()
@@ -594,7 +621,7 @@ with tab_stats:
         fig.update_layout(height=max(500, 24 * len(chart_df)), xaxis_title="Titres nationaux")
         st.plotly_chart(fig, use_container_width=True)
 
-    elif stat_mode == "Ligue des Champions":
+    elif stat_mode == "Compétition continentale":
         chart_df = c1_best.rename(columns={"Club_c1": "Club"}).copy()
         chart_df["Label"] = chart_df["Pays"] + " — " + chart_df["Club"]
         chart_df = chart_df.sort_values("Titres_c1")
@@ -603,11 +630,11 @@ with tab_stats:
             marker_color=COLOR_LDC,
             text=chart_df["Titres_c1"], textposition="outside",
         ))
-        fig.update_layout(height=max(400, 24 * len(chart_df)), xaxis_title="Titres de Ligue des Champions")
+        fig.update_layout(height=max(400, 24 * len(chart_df)), xaxis_title=f"Titres — {competition_for_stats}")
         st.plotly_chart(fig, use_container_width=True)
 
-    else:  # Les deux — club le plus titré (national + C1 combinés) par pays, barre empilée
-        c1_by_club = df_c1.groupby(["Pays", "Club"])["Nb_titres"].sum().rename("Titres_c1_club")
+    else:  # Les deux — club le plus titré (national + compétition choisie) par pays, barre empilée
+        c1_by_club = continental_df.groupby(["Pays", "Club"])["Nb_titres"].sum().rename("Titres_c1_club")
         combo = df_national.groupby(["Pays", "Club"])["Nb_titres"].sum().rename("Titres_nat_club").reset_index()
         combo = combo.merge(c1_by_club, on=["Pays", "Club"], how="left")
         combo["Titres_c1_club"] = combo["Titres_c1_club"].fillna(0)
@@ -624,12 +651,12 @@ with tab_stats:
         ))
         fig.add_trace(go.Bar(
             x=chart_df["Titres_c1_club"], y=chart_df["Label"], orientation="h",
-            name="Ligue des Champions", marker=dict(color=COLOR_LDC, line=dict(width=1.5, color="white")),
+            name=competition_for_stats, marker=dict(color=COLOR_LDC, line=dict(width=1.5, color="white")),
             text=chart_df["Titres_c1_club"], textposition="inside",
         ))
         fig.update_layout(
             barmode="stack", height=max(500, 24 * len(chart_df)),
-            xaxis_title="Titres (championnat + Ligue des Champions)",
+            xaxis_title=f"Titres (championnat + {competition_for_stats})",
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -662,24 +689,3 @@ with tab_pays:
             ("Annee_dernier_titre", "Dernier titre"),
             ("Nb_titres", "Titres"),
         ])
-
-# ========================================================================
-# ONGLET 5 — DONNÉES BRUTES (DataFrame unifié complet)
-# ========================================================================
-with tab_data:
-    st.subheader("DataFrame unifié (toutes feuilles agrégées)")
-    st.caption("Colonne 'Source' = nom de la feuille Excel d'origine.")
-    display_cols = [
-        "Source", "Categorie", "Club", "Pays", "Division_actuelle",
-        "Niveau_division", "Annee_dernier_titre", "Nb_titres",
-        "Nb_finales_perdues", "Statut",
-    ]
-    st.dataframe(df[display_cols], use_container_width=True, height=500)
-
-    csv = df[display_cols].to_csv(index=False).encode("utf-8-sig")
-    st.download_button(
-        "Télécharger le DataFrame unifié (CSV)",
-        data=csv,
-        file_name="palmares_unifie.csv",
-        mime="text/csv",
-    )

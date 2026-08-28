@@ -30,6 +30,40 @@ SHEET_FINALISTES = "Finalistes malheureux"
 SHEET_C1 = "Ligue des Champions"
 
 # ------------------------------------------------------------------
+# Les 5 compétitions continentales de clubs, chacune avec une feuille
+# "vainqueurs" et une feuille "finalistes". Ajouter une compétition ici
+# suffit à l'intégrer partout (carte, etc.) sans autre modification.
+# ------------------------------------------------------------------
+CONTINENTAL_COMPETITIONS = {
+    "Ligue des Champions (UEFA)": {
+        "winners_sheet": "Ligue des Champions",
+        "finalists_sheet": "Finalistes Ligue des Champions",
+    },
+    "Copa Libertadores": {
+        "winners_sheet": "Copa Libertadores",
+        "finalists_sheet": "Finalistes Copa Libertadores",
+    },
+    "CAF Champions League": {
+        "winners_sheet": "CAF Champions League",
+        "finalists_sheet": "Finalistes CAF Champ League",
+    },
+    "AFC Champions League": {
+        "winners_sheet": "AFC Champions League",
+        "finalists_sheet": "Finalistes AFC Champ League",
+    },
+    "CONCACAF Champions Cup": {
+        "winners_sheet": "CONCACAF Champions Cup",
+        "finalists_sheet": "Finalistes CONCACAF Champ Cup",
+    },
+}
+
+# Table de correspondance inverse : nom de feuille -> (compétition, rôle)
+_SHEET_TO_COMPETITION = {}
+for _comp_name, _sheets in CONTINENTAL_COMPETITIONS.items():
+    _SHEET_TO_COMPETITION[_sheets["winners_sheet"]] = (_comp_name, "Vainqueurs")
+    _SHEET_TO_COMPETITION[_sheets["finalists_sheet"]] = (_comp_name, "Finalistes")
+
+# ------------------------------------------------------------------
 # Légende des couleurs de surlignage rencontrées dans le classeur.
 # Les codes sont ceux réellement présents dans le fichier (ARGB sans
 # le préfixe alpha '00').
@@ -212,7 +246,35 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
             continue
         d = df.copy()
 
-        if sheetname == SHEET_FINALISTES:
+        if sheetname in _SHEET_TO_COMPETITION:
+            competition_name, role = _SHEET_TO_COMPETITION[sheetname]
+            if role == "Finalistes":
+                d = d.rename(columns={
+                    "Nom de l'équipe": "Club",
+                    "Division actuelle": "Division_actuelle",
+                    "Niveau de la division": "Niveau_division",
+                    "Nombre de finales perdues": "Nb_finales_perdues",
+                })
+                d["Annee_dernier_titre"] = None
+                d["Nb_titres"] = None
+                if "Pays" not in d.columns:
+                    d["Pays"] = None
+                d["Categorie"] = "Continental - Finalistes"
+            else:  # Vainqueurs
+                d = d.rename(columns={
+                    "Nom de l'équipe": "Club",
+                    "Division actuelle": "Division_actuelle",
+                    "Niveau de la division": "Niveau_division",
+                    "Année du dernier titre": "Annee_dernier_titre",
+                    "Nombre de titres remportés": "Nb_titres",
+                    "Pays": "Pays",
+                })
+                d["Nb_finales_perdues"] = None
+                d["Categorie"] = "Continental - Vainqueurs"
+            d["Competition"] = competition_name
+
+        elif sheetname == SHEET_FINALISTES:
+            # Compatibilité ascendante : ancienne feuille avant renommage
             d = d.rename(columns={
                 "Nom de l'équipe": "Club",
                 "Division actuelle": "Division_actuelle",
@@ -222,20 +284,9 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
             d["Annee_dernier_titre"] = None
             d["Nb_titres"] = None
             if "Pays" not in d.columns:
-                d["Pays"] = None  # feuille sans colonne Pays (ancienne version)
-            d["Categorie"] = "Finalistes C1"
-
-        elif sheetname == SHEET_C1:
-            d = d.rename(columns={
-                "Nom de l'équipe": "Club",
-                "Division actuelle": "Division_actuelle",
-                "Niveau de la division": "Niveau_division",
-                "Année du dernier titre": "Annee_dernier_titre",
-                "Nombre de titres remportés": "Nb_titres",
-                "Pays": "Pays",
-            })
-            d["Nb_finales_perdues"] = None
-            d["Categorie"] = "Ligue des Champions"
+                d["Pays"] = None
+            d["Categorie"] = "Continental - Finalistes"
+            d["Competition"] = "Ligue des Champions (UEFA)"
 
         else:  # feuille pays
             d = d.rename(columns={
@@ -248,6 +299,7 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
             d["Nb_finales_perdues"] = None
             d["Pays"] = sheetname
             d["Categorie"] = "Championnat national"
+            d["Competition"] = None
 
         d["Source"] = sheetname
         if "Latitude" not in d.columns:
@@ -257,7 +309,7 @@ def build_unified_dataframe(sheets: dict[str, pd.DataFrame]) -> pd.DataFrame:
         frames.append(d[[
             "Club", "Division_actuelle", "Niveau_division",
             "Annee_dernier_titre", "Nb_titres", "Nb_finales_perdues",
-            "Pays", "Source", "Categorie", "_color", "_non_jouable", "Latitude", "Longitude",
+            "Pays", "Source", "Categorie", "Competition", "_color", "_non_jouable", "Latitude", "Longitude",
         ]])
 
     unified = pd.concat(frames, ignore_index=True)
