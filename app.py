@@ -523,25 +523,29 @@ with tab_compare:
             lambda c: COLOR_LEGEND[c]["marker"]
         )
         compare_df = compare_df.sort_values("Niveau_division")
+        # Nom de club affiché avec son pays entre parenthèses, pour lever
+        # toute ambiguïté quand deux clubs de pays différents ont un nom proche.
+        compare_df["ClubLabel"] = compare_df.index + " (" + compare_df["Pays"] + ")"
+        label_color_map = dict(zip(compare_df["ClubLabel"], compare_df["CouleurBarre"]))
 
         st.markdown("#### Niveau de division actuel (1 = plus haut niveau du pays)")
         fig_niveau = px.bar(
-            compare_df.reset_index(), x="Club", y="Niveau_division",
-            color="Club", color_discrete_map=dict(zip(compare_df.index, compare_df["CouleurBarre"])),
+            compare_df.reset_index(), x="ClubLabel", y="Niveau_division",
+            color="ClubLabel", color_discrete_map=label_color_map,
         )
-        fig_niveau.update_layout(height=380, showlegend=False, yaxis_title="Niveau de division")
+        fig_niveau.update_layout(height=380, showlegend=False, yaxis_title="Niveau de division", xaxis_title="")
         st.plotly_chart(fig_niveau, use_container_width=True)
 
         st.markdown("#### Année du dernier titre national (frise chronologique)")
         timeline_df = compare_df.reset_index().sort_values("Annee_dernier_titre")
         fig_timeline = px.scatter(
-            timeline_df, x="Annee_dernier_titre", y="Club",
-            color="Club", color_discrete_map=dict(zip(compare_df.index, compare_df["CouleurBarre"])),
+            timeline_df, x="Annee_dernier_titre", y="ClubLabel",
+            color="ClubLabel", color_discrete_map=label_color_map,
         )
         fig_timeline.update_traces(marker=dict(size=14, line=dict(width=1, color="#444444")))
         fig_timeline.update_layout(
             height=max(320, 28 * len(timeline_df)), showlegend=False,
-            xaxis_title="Année du dernier titre",
+            xaxis_title="Année du dernier titre", yaxis_title="",
         )
         st.plotly_chart(fig_timeline, use_container_width=True)
 
@@ -550,19 +554,19 @@ with tab_compare:
             st.markdown("#### Nombre de titres nationaux")
             fig_nat = px.bar(
                 compare_df.reset_index().sort_values("Nb_titres"),
-                x="Nb_titres", y="Club", orientation="h",
-                color="Club", color_discrete_map=dict(zip(compare_df.index, compare_df["CouleurBarre"])),
+                x="Nb_titres", y="ClubLabel", orientation="h",
+                color="ClubLabel", color_discrete_map=label_color_map,
             )
-            fig_nat.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False)
+            fig_nat.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="")
             st.plotly_chart(fig_nat, use_container_width=True)
         with col2:
-            st.markdown("#### Nombre de titres continentaux (5 compétitions confondues)")
+            st.markdown("#### Nombre de titres continentaux")
             fig_c1 = px.bar(
                 compare_df.reset_index().sort_values("Titres_Continental"),
-                x="Titres_Continental", y="Club", orientation="h",
-                color="Club", color_discrete_map=dict(zip(compare_df.index, compare_df["CouleurBarre"])),
+                x="Titres_Continental", y="ClubLabel", orientation="h",
+                color="ClubLabel", color_discrete_map=label_color_map,
             )
-            fig_c1.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False)
+            fig_c1.update_layout(height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="")
             st.plotly_chart(fig_c1, use_container_width=True)
 
         st.divider()
@@ -571,7 +575,7 @@ with tab_compare:
             .rename(columns={
                 "Division_actuelle": "Division actuelle", "Niveau_division": "Niveau",
                 "Annee_dernier_titre": "Dernier titre", "Nb_titres": "Titres nationaux",
-                "Titres_Continental": "Titres continentaux (5 compétitions)",
+                "Titres_Continental": "Titres continentaux",
             }),
             use_container_width=True,
         )
