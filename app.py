@@ -582,13 +582,13 @@ with tab_stats:
     )
 
     competition_for_stats = None
-    if stat_mode in ("Compétition continentale", "Les deux"):
+    if stat_mode == "Compétition continentale":
         competition_for_stats = st.selectbox(
             "Compétition", list(CONTINENTAL_COMPETITIONS.keys()), key="stats_competition"
         )
 
     COLOR_CHAMP = "#2563EB"  # bleu — championnat national
-    COLOR_LDC = "#D97706"    # orange — compétition continentale
+    COLOR_LDC = "#D97706"    # orange — compétition(s) continentale(s)
 
     # Titres nationaux par club+pays (le plus titré de chaque pays)
     nat_best = (
@@ -597,11 +597,19 @@ with tab_stats:
         .rename(columns={"Nb_titres": "Titres_nat"})
     )
 
-    if competition_for_stats:
+    if stat_mode == "Les deux":
+        # Vue d'ensemble : les 5 compétitions continentales cumulées, pour
+        # que tous les pays ayant un titre continental (peu importe lequel)
+        # apparaissent — restreindre à une seule compétition viderait trop
+        # de pays et nuirait à la lisibilité de cette vue globale.
+        continental_df = df[df["Categorie"] == "Continental - Vainqueurs"]
+        continental_label = "Compétitions continentales (5 cumulées)"
+    elif competition_for_stats:
         continental_df = df[
             (df["Categorie"] == "Continental - Vainqueurs")
             & (df["Competition"] == competition_for_stats)
         ]
+        continental_label = competition_for_stats
         # Titres par club (peut y avoir plusieurs clubs vainqueurs par pays ; on garde le plus titré)
         c1_best = (
             continental_df.loc[continental_df.groupby("Pays")["Nb_titres"].idxmax()]
@@ -651,12 +659,12 @@ with tab_stats:
         ))
         fig.add_trace(go.Bar(
             x=chart_df["Titres_c1_club"], y=chart_df["Label"], orientation="h",
-            name=competition_for_stats, marker=dict(color=COLOR_LDC, line=dict(width=1.5, color="white")),
+            name=continental_label, marker=dict(color=COLOR_LDC, line=dict(width=1.5, color="white")),
             text=chart_df["Titres_c1_club"], textposition="inside",
         ))
         fig.update_layout(
             barmode="stack", height=max(500, 24 * len(chart_df)),
-            xaxis_title=f"Titres (championnat + {competition_for_stats})",
+            xaxis_title=f"Titres (championnat + {continental_label})",
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
         )
         st.plotly_chart(fig, use_container_width=True)
