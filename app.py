@@ -437,20 +437,21 @@ with tab_carte:
             st.info("Cliquez sur un pays de la carte pour afficher ses clubs positionnés géographiquement.")
 
             st.divider()
-            st.caption(
-                "Difficile de cliquer précisément sur un petit territoire "
-                "(Singapour, Hong Kong, Gibraltar...) ? Choisissez-le directement ici :"
-            )
-            direct_country = st.selectbox(
-                "Ou choisir un pays directement",
-                [""] + sorted(source_df["Pays"].unique().tolist()),
-                key="direct_country_select",
-            )
-            if direct_country:
-                st.session_state.nat_selected_iso3 = source_df.loc[
-                    source_df["Pays"] == direct_country, "Iso3"
-                ].iloc[0]
-                st.rerun()
+            SMALL_TERRITORIES = ["Gibraltar", "Hong Kong", "Singapour"]
+            available_small = [c for c in SMALL_TERRITORIES if c in source_df["Pays"].unique()]
+            if available_small:
+                st.caption("Petit territoire difficile à cliquer précisément sur la carte :")
+                direct_country = st.selectbox(
+                    "Petit territoire",
+                    ["— Sélectionner —"] + available_small,
+                    key="direct_country_select",
+                    label_visibility="collapsed",
+                )
+                if direct_country != "— Sélectionner —":
+                    st.session_state.nat_selected_iso3 = source_df.loc[
+                        source_df["Pays"] == direct_country, "Iso3"
+                    ].iloc[0]
+                    st.rerun()
 
 # ========================================================================
 # ONGLET 2 — COMPARATEUR DE CLUBS
