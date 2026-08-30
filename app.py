@@ -183,6 +183,29 @@ with tab_carte:
             txt += "<br><span style='color:#B91C1C'><b>Non jouable en FM26</b></span>"
         return txt
 
+    def apply_jitter(points_df, radius=0.05):
+        """
+        Quand plusieurs clubs partagent exactement les mêmes coordonnées
+        (ex: un même stade), les répartit légèrement en cercle autour du
+        point d'origine pour qu'ils restent distincts et cliquables sur la
+        carte, plutôt que de se superposer parfaitement.
+        """
+        import math
+        points_df = points_df.copy()
+        groups = points_df.groupby(
+            [points_df["Latitude"].round(4), points_df["Longitude"].round(4)]
+        ).indices
+        for _, idx_positions in groups.items():
+            n = len(idx_positions)
+            if n <= 1:
+                continue
+            row_indices = points_df.index[list(idx_positions)]
+            for i, ridx in enumerate(row_indices):
+                angle = 2 * math.pi * i / n
+                points_df.loc[ridx, "Latitude"] += radius * math.sin(angle)
+                points_df.loc[ridx, "Longitude"] += radius * math.cos(angle)
+        return points_df
+
     # --------------------------------------------------------------
     # MODE "Compétitions continentales" : carte directe et navigable
     # de la compétition choisie, avec en option les finalistes
@@ -215,6 +238,7 @@ with tab_carte:
             lambda x: "#B91C1C" if x else "#444444"
         )
         winners["HoverText"] = winners.apply(make_hover_text, axis=1)
+        winners = apply_jitter(winners)
 
         geo_fig = go.Figure()
         geo_fig.add_trace(go.Scattergeo(
@@ -241,6 +265,7 @@ with tab_carte:
                 ),
                 axis=1,
             )
+            finalistes = apply_jitter(finalistes)
             geo_fig.add_trace(go.Scattergeo(
                 lat=finalistes["Latitude"], lon=finalistes["Longitude"],
                 text=finalistes["HoverText"], hoverinfo="text",
@@ -319,6 +344,7 @@ with tab_carte:
                 lambda x: 3 if x else 1
             )
             clubs_df["HoverText"] = clubs_df.apply(make_hover_text, axis=1)
+            clubs_df = apply_jitter(clubs_df)
 
             geo_fig = go.Figure(go.Scattergeo(
                 lat=clubs_df["Latitude"],
