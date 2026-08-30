@@ -372,7 +372,10 @@ with tab_carte:
 
         # -------- VUE MONDE (par défaut) --------
         else:
-            st.caption(
+            SMALL_TERRITORIES = ["Gibraltar", "Hong Kong", "Singapour"]
+            available_small = [c for c in SMALL_TERRITORIES if c in source_df["Pays"].unique()]
+
+            caption_text = (
                 "Cliquez sur un pays pour zoomer et voir chaque club positionné "
                 "sur la carte. Écosse, Pays de Galles et Irlande du Nord n'ayant "
                 "pas de code ISO propre, ils sont affichés sur le même polygone "
@@ -380,6 +383,26 @@ with tab_carte:
                 "— leurs palmarès restent séparés dans les données et sur la "
                 "carte pays."
             )
+            if available_small:
+                caption_text += (
+                    " Pour les petits territoires difficiles à cliquer précisément "
+                    "(Gibraltar, Hong Kong, Singapour), utilisez plutôt le menu "
+                    "déroulant ci-dessous."
+                )
+            st.caption(caption_text)
+
+            if available_small:
+                direct_country = st.selectbox(
+                    "Petit territoire",
+                    ["— Sélectionner un petit territoire —"] + available_small,
+                    key="direct_country_select",
+                    label_visibility="collapsed",
+                )
+                if direct_country != "— Sélectionner un petit territoire —":
+                    st.session_state.nat_selected_iso3 = source_df.loc[
+                        source_df["Pays"] == direct_country, "Iso3"
+                    ].iloc[0]
+                    st.rerun()
 
             # Agrégation par code ISO3 (plusieurs 'Pays' peuvent partager un ISO3)
             agg_rows = []
@@ -432,25 +455,6 @@ with tab_carte:
                 clicked_iso3 = event["selection"]["points"][0].get("location")
                 if clicked_iso3:
                     st.session_state.nat_selected_iso3 = clicked_iso3
-                    st.rerun()
-
-            st.info("Cliquez sur un pays de la carte pour afficher ses clubs positionnés géographiquement.")
-
-            st.divider()
-            SMALL_TERRITORIES = ["Gibraltar", "Hong Kong", "Singapour"]
-            available_small = [c for c in SMALL_TERRITORIES if c in source_df["Pays"].unique()]
-            if available_small:
-                st.caption("Petit territoire difficile à cliquer précisément sur la carte :")
-                direct_country = st.selectbox(
-                    "Petit territoire",
-                    ["— Sélectionner —"] + available_small,
-                    key="direct_country_select",
-                    label_visibility="collapsed",
-                )
-                if direct_country != "— Sélectionner —":
-                    st.session_state.nat_selected_iso3 = source_df.loc[
-                        source_df["Pays"] == direct_country, "Iso3"
-                    ].iloc[0]
                     st.rerun()
 
 # ========================================================================
