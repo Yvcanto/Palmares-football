@@ -165,13 +165,19 @@ with tab_carte:
         horizontal=True,
     )
 
+    def format_division(r):
+        """Ex: 'Ligue 1 (D1)' — combine le nom de la division et son niveau hiérarchique."""
+        niveau = r.get("Niveau_division")
+        if pd.isna(niveau):
+            return r["Division_actuelle"]
+        return f"{r['Division_actuelle']} (D{int(niveau)})"
+
     def make_hover_text(r):
         txt = (
             f"<b>{r['Club']}</b><br>"
-            f"Division : {r['Division_actuelle']}<br>"
+            f"Division : {format_division(r)}<br>"
             f"Dernier titre : {r['Annee_dernier_titre']}<br>"
-            f"Titres : {r['Nb_titres']}<br>"
-            f"{r['Statut']}"
+            f"Titres : {r['Nb_titres']}"
         )
         if r.get("_non_jouable"):
             txt += "<br><span style='color:#B91C1C'><b>Non jouable en FM26</b></span>"
@@ -230,7 +236,7 @@ with tab_carte:
             finalistes["HoverText"] = finalistes.apply(
                 lambda r: (
                     f"<b>{r['Club']}</b><br>"
-                    f"Division : {r['Division_actuelle']}<br>"
+                    f"Division : {format_division(r)}<br>"
                     f"Finales perdues : {r['Nb_finales_perdues']}"
                 ),
                 axis=1,
