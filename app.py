@@ -121,7 +121,7 @@ def render_styled_table(sub_df: pd.DataFrame, columns: list[tuple[str, str]]):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def show_color_legend():
+def show_color_legend(show_red_name_convention=True):
     swatches = "".join(
         f'<span style="display:inline-block;margin-right:16px;">'
         f'<span style="display:inline-block;width:14px;height:14px;'
@@ -130,11 +130,12 @@ def show_color_legend():
         f'{meta["label"]}</span>'
         for key, meta in COLOR_LEGEND.items() if key != "NONE"
     )
-    swatches += (
-        '<span style="display:inline-block;">'
-        '<span style="color:#B91C1C;font-weight:bold;margin-right:6px;">Nom du club</span>'
-        '= non jouable en FM26</span>'
-    )
+    if show_red_name_convention:
+        swatches += (
+            '<span style="display:inline-block;">'
+            '<span style="color:#B91C1C;font-weight:bold;margin-right:6px;">Nom du club</span>'
+            '= non jouable en FM26</span>'
+        )
     st.markdown(f"<div style='margin-bottom:8px;'>{swatches}</div>", unsafe_allow_html=True)
 
 
@@ -219,7 +220,7 @@ with tab_carte:
             "Afficher aussi les finalistes malheureux (triangles rouges)",
             value=True,
         )
-        show_color_legend()
+        show_color_legend(show_red_name_convention=False)
         st.caption(
             "🔺 Triangle rouge = finaliste n'ayant jamais remporté cette "
             "compétition (à ne pas confondre avec le rond rouge 'club disparu')."
@@ -328,7 +329,7 @@ with tab_carte:
                 chosen_country = candidates[0]
 
             st.markdown(f"### {chosen_country} — championnat national")
-            show_color_legend()
+            show_color_legend(show_red_name_convention=False)
             st.caption("⭕ Contour rouge épais = division trop basse pour être jouable dans FM26.")
 
             clubs_df = source_df[source_df["Pays"] == chosen_country].copy()
@@ -386,7 +387,7 @@ with tab_carte:
             if available_small:
                 caption_text += (
                     " Pour les petits territoires difficiles à cliquer précisément "
-                    "(Gibraltar, Hong Kong, Singapour), utilisez plutôt le menu "
+                    "(Gibraltar, Hong Kong, Singapour), utilisez le menu "
                     "déroulant ci-dessous."
                 )
             st.caption(caption_text)
@@ -745,12 +746,14 @@ with tab_stats:
 # ========================================================================
 with tab_pays:
     st.subheader("Explorer une feuille du classeur")
-    all_sheet_names = [SHEET_C1] + sorted(df_national["Pays"].unique())
+    all_sheet_names = list(CONTINENTAL_COMPETITIONS.keys()) + sorted(df_national["Pays"].unique())
     choice = st.selectbox("Choisir une feuille", all_sheet_names)
 
     show_color_legend()
-    if choice == SHEET_C1:
-        sub = df_c1.sort_values("Nb_titres", ascending=False)
+    if choice in CONTINENTAL_COMPETITIONS:
+        sub = df[
+            (df["Categorie"] == "Continental - Vainqueurs") & (df["Competition"] == choice)
+        ].sort_values("Nb_titres", ascending=False)
         render_styled_table(sub, [
             ("Club", "Club"),
             ("Division_actuelle", "Division actuelle"),
