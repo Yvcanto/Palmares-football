@@ -143,11 +143,6 @@ def show_color_legend(show_red_name_convention=True):
 # En-tête
 # ----------------------------------------------------------------------
 st.title("⚽ Palmarès Football FM — Tableau de bord")
-st.caption(
-    f"{df['Source'].nunique()} feuilles agrégées · "
-    f"{len(df_national)} lignes de palmarès nationaux · "
-    f"{len(df_c1)} vainqueurs de C1 · {len(df_finalistes)} finalistes malheureux"
-)
 
 tab_carte, tab_compare, tab_stats, tab_pays = st.tabs(
     ["🗺️ Carte interactive", "⚖️ Comparateur de clubs",
