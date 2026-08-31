@@ -295,8 +295,8 @@ with tab_carte:
             margin=dict(l=0, r=0, t=10, b=0), height=560,
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
         )
-        st.plotly_chart(geo_fig, use_container_width=True, key=f"continental_map_{competition_choice}")
         st.caption("Déplacez-vous et zoomez librement sur la carte. Survolez un point pour voir le détail du club.")
+        st.plotly_chart(geo_fig, use_container_width=True, key=f"continental_map_{competition_choice}")
 
     # --------------------------------------------------------------
     # MODE "Championnats nationaux" : carte du monde par continent,
@@ -367,8 +367,8 @@ with tab_carte:
                 showlakes=False,
             )
             geo_fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=560)
-            st.plotly_chart(geo_fig, use_container_width=True, key=f"countrymap_{chosen_country}")
             st.caption("Survolez un point pour voir le détail du club.")
+            st.plotly_chart(geo_fig, use_container_width=True, key=f"countrymap_{chosen_country}")
 
         # -------- VUE MONDE (par défaut) --------
         else:
