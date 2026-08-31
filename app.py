@@ -29,7 +29,7 @@ from data_utils import (
 # Configuration générale
 # ----------------------------------------------------------------------
 st.set_page_config(
-    page_title="Palmarès Football FM26",
+    page_title="Palmarès Football FM",
     page_icon="⚽",
     layout="wide",
 )
@@ -60,7 +60,7 @@ else:
         xlsx_path = uploaded
 
 if xlsx_path is None:
-    st.title("⚽ Palmarès Football FM26")
+    st.title("⚽ Palmarès Football FM")
     st.info("Veuillez charger le fichier Excel dans la barre latérale pour démarrer.")
     st.stop()
 
@@ -141,7 +141,7 @@ def show_color_legend():
 # ----------------------------------------------------------------------
 # En-tête
 # ----------------------------------------------------------------------
-st.title("⚽ Palmarès Football FM26 — Tableau de bord")
+st.title("⚽ Palmarès Football FM — Tableau de bord")
 st.caption(
     f"{df['Source'].nunique()} feuilles agrégées · "
     f"{len(df_national)} lignes de palmarès nationaux · "
