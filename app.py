@@ -146,7 +146,7 @@ st.title("⚽ Palmarès Football FM — Tableau de bord")
 
 tab_carte, tab_compare, tab_stats, tab_pays = st.tabs(
     ["🗺️ Carte interactive", "⚖️ Comparateur de clubs",
-     "🏆 Statistiques globales", "🔎 Détail par pays"]
+     "🏆 Statistiques globales", "🔎 Détail par compétition"]
 )
 
 # ========================================================================
