@@ -535,11 +535,12 @@ def make_vbar_with_hover(labels, values, colors, card_texts, yaxis_title, height
     ))
     # Même principe que pour les barres horizontales : le nom du club en
     # bas de l'axe X n'est pas survolable nativement, on le redessine en
-    # texte hoverable, verticalement sous chaque colonne.
+    # texte hoverable sous chaque colonne (texte horizontal — Plotly ne
+    # permet pas de faire pivoter du texte sur une trace Scatter).
     fig.add_trace(go.Scatter(
         x=labels, y=[0] * len(labels), mode="text",
-        text=labels, textposition="middle right",
-        textangle=-90, textfont=dict(size=11),
+        text=labels, textposition="bottom center",
+        textfont=dict(size=11),
         customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
         showlegend=False, cliponaxis=False,
     ))
