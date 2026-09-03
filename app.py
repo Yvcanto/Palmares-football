@@ -574,15 +574,37 @@ with tab_compare:
         compare_df = compare_df.sort_values("Niveau_division")
         # Nom de club affiché avec son pays entre parenthèses, pour lever
         # toute ambiguïté quand deux clubs de pays différents ont un nom proche.
-        compare_df["ClubLabel"] = compare_df.index + " (" + compare_df["Pays"] + ")"
+        compare_df["ClubLabel"] = compare_df.index
         label_color_map = dict(zip(compare_df["ClubLabel"], compare_df["CouleurBarre"]))
+
+        def make_compare_card_text(r):
+            lignes = [
+                f"<b>{r.name}</b>",
+                f"Pays : {r['Pays']}",
+                f"Division : {format_division(r)}",
+                f"Dernier titre : {r['Annee_dernier_titre']}",
+                f"Titres nationaux : {r['Nb_titres']}",
+                f"Titres continentaux : {r['Titres_Continental']}",
+                COLOR_LEGEND[r["Classified"]]["label"],
+            ]
+            return "<br>".join(lignes)
+
+        compare_df["CardText"] = compare_df.apply(make_compare_card_text, axis=1)
+
+        def apply_card_hover(fig):
+            fig.update_traces(hovertemplate="%{customdata[0]}<extra></extra>")
+            return fig
+
+        st.caption("Survolez un club sur les graphiques ci-dessous pour voir sa fiche complète.")
 
         st.markdown("#### Niveau de division actuel (1 = plus haut niveau du pays)")
         fig_niveau = px.bar(
             compare_df.reset_index(), x="ClubLabel", y="Niveau_division",
             color="ClubLabel", color_discrete_map=label_color_map,
+            custom_data=["CardText"],
         )
         fig_niveau.update_layout(height=380, showlegend=False, yaxis_title="Niveau de division", xaxis_title="")
+        apply_card_hover(fig_niveau)
         st.plotly_chart(fig_niveau, use_container_width=True)
 
         st.markdown("#### Année du dernier titre national (frise chronologique)")
@@ -590,12 +612,14 @@ with tab_compare:
         fig_timeline = px.scatter(
             timeline_df, x="Annee_dernier_titre", y="ClubLabel",
             color="ClubLabel", color_discrete_map=label_color_map,
+            custom_data=["CardText"],
         )
         fig_timeline.update_traces(marker=dict(size=14, line=dict(width=1, color="#444444")))
         fig_timeline.update_layout(
             height=max(320, 28 * len(timeline_df)), showlegend=False,
             xaxis_title="Année du dernier titre", yaxis_title="",
         )
+        apply_card_hover(fig_timeline)
         st.plotly_chart(fig_timeline, use_container_width=True)
 
         col1, col2 = st.columns(2)
@@ -605,11 +629,13 @@ with tab_compare:
                 compare_df.reset_index().sort_values("Nb_titres"),
                 x="Nb_titres", y="ClubLabel", orientation="h",
                 color="ClubLabel", color_discrete_map=label_color_map,
+                custom_data=["CardText"],
             )
             fig_nat.update_layout(
                 height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="",
                 xaxis=dict(title="Titres nationaux", dtick=1),
             )
+            apply_card_hover(fig_nat)
             st.plotly_chart(fig_nat, use_container_width=True)
         with col2:
             st.markdown("#### Nombre de titres continentaux")
@@ -617,12 +643,14 @@ with tab_compare:
                 compare_df.reset_index().sort_values("Titres_Continental"),
                 x="Titres_Continental", y="ClubLabel", orientation="h",
                 color="ClubLabel", color_discrete_map=label_color_map,
+                custom_data=["CardText"],
             )
             max_continental = max(1, int(compare_df["Titres_Continental"].max()))
             fig_c1.update_layout(
                 height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="",
                 xaxis=dict(title="Titres continentaux", range=[0, max_continental], dtick=1),
             )
+            apply_card_hover(fig_c1)
             st.plotly_chart(fig_c1, use_container_width=True)
 
         st.divider()
@@ -660,7 +688,7 @@ with tab_stats:
     # Titres nationaux par club+pays (le plus titré de chaque pays)
     nat_best = (
         df_national.loc[df_national.groupby("Pays")["Nb_titres"].idxmax()]
-        [["Pays", "Club", "Nb_titres"]]
+        [["Pays", "Club", "Nb_titres", "Division_actuelle", "Niveau_division", "Annee_dernier_titre"]]
         .rename(columns={"Nb_titres": "Titres_nat"})
     )
 
@@ -680,7 +708,7 @@ with tab_stats:
         # Titres par club (peut y avoir plusieurs clubs vainqueurs par pays ; on garde le plus titré)
         c1_best = (
             continental_df.loc[continental_df.groupby("Pays")["Nb_titres"].idxmax()]
-            [["Pays", "Club", "Nb_titres"]]
+            [["Pays", "Club", "Nb_titres", "Division_actuelle", "Niveau_division", "Annee_dernier_titre"]]
             .rename(columns={"Nb_titres": "Titres_c1", "Club": "Club_c1"})
         )
 
@@ -688,24 +716,46 @@ with tab_stats:
         chart_df = nat_best.copy()
         chart_df["Label"] = chart_df["Pays"] + " — " + chart_df["Club"]
         chart_df = chart_df.sort_values("Titres_nat")
+        chart_df["CardText"] = chart_df.apply(
+            lambda r: (
+                f"<b>{r['Club']}</b><br>Pays : {r['Pays']}<br>"
+                f"Division : {format_division(r)}<br>"
+                f"Dernier titre : {r['Annee_dernier_titre']}<br>"
+                f"Titres nationaux : {r['Titres_nat']}"
+            ),
+            axis=1,
+        )
         fig = go.Figure(go.Bar(
             x=chart_df["Titres_nat"], y=chart_df["Label"], orientation="h",
             marker_color=COLOR_CHAMP,
             text=chart_df["Titres_nat"], textposition="outside",
+            customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
         ))
         fig.update_layout(height=max(500, 24 * len(chart_df)), xaxis_title="Titres nationaux")
+        st.caption("Survolez une barre pour voir la fiche complète du club.")
         st.plotly_chart(fig, use_container_width=True)
 
     elif stat_mode == "Compétition continentale":
         chart_df = c1_best.rename(columns={"Club_c1": "Club"}).copy()
         chart_df["Label"] = chart_df["Pays"] + " — " + chart_df["Club"]
         chart_df = chart_df.sort_values("Titres_c1")
+        chart_df["CardText"] = chart_df.apply(
+            lambda r: (
+                f"<b>{r['Club']}</b><br>Pays : {r['Pays']}<br>"
+                f"Division : {format_division(r)}<br>"
+                f"Dernier titre : {r['Annee_dernier_titre']}<br>"
+                f"Titres {competition_for_stats} : {r['Titres_c1']}"
+            ),
+            axis=1,
+        )
         fig = go.Figure(go.Bar(
             x=chart_df["Titres_c1"], y=chart_df["Label"], orientation="h",
             marker_color=COLOR_LDC,
             text=chart_df["Titres_c1"], textposition="outside",
+            customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
         ))
         fig.update_layout(height=max(400, 24 * len(chart_df)), xaxis_title=f"Titres — {competition_for_stats}")
+        st.caption("Survolez une barre pour voir la fiche complète du club.")
         st.plotly_chart(fig, use_container_width=True)
 
     else:  # Les deux — club le plus titré (national + compétition choisie) par pays, barre empilée
@@ -715,25 +765,44 @@ with tab_stats:
         combo["Titres_c1_club"] = combo["Titres_c1_club"].fillna(0)
         combo["Total"] = combo["Titres_nat_club"] + combo["Titres_c1_club"]
         chart_df = combo.loc[combo.groupby("Pays")["Total"].idxmax()].copy()
+        # Récupération du détail (division, niveau, dernier titre national)
+        # perdu lors de l'agrégation, via jointure sur le profil national du club.
+        details = df_national.drop_duplicates(subset=["Pays", "Club"])[
+            ["Pays", "Club", "Division_actuelle", "Niveau_division", "Annee_dernier_titre"]
+        ]
+        chart_df = chart_df.merge(details, on=["Pays", "Club"], how="left")
         chart_df["Label"] = chart_df["Pays"] + " — " + chart_df["Club"]
         chart_df = chart_df.sort_values("Total")
+        chart_df["CardText"] = chart_df.apply(
+            lambda r: (
+                f"<b>{r['Club']}</b><br>Pays : {r['Pays']}<br>"
+                f"Division : {format_division(r)}<br>"
+                f"Dernier titre national : {r['Annee_dernier_titre']}<br>"
+                f"Titres nationaux : {int(r['Titres_nat_club'])}<br>"
+                f"Titres continentaux : {int(r['Titres_c1_club'])}"
+            ),
+            axis=1,
+        )
 
         fig = go.Figure()
         fig.add_trace(go.Bar(
             x=chart_df["Titres_nat_club"], y=chart_df["Label"], orientation="h",
             name="Championnat national", marker=dict(color=COLOR_CHAMP, line=dict(width=1.5, color="white")),
             text=chart_df["Titres_nat_club"], textposition="inside",
+            customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
         ))
         fig.add_trace(go.Bar(
             x=chart_df["Titres_c1_club"], y=chart_df["Label"], orientation="h",
             name=continental_label, marker=dict(color=COLOR_LDC, line=dict(width=1.5, color="white")),
             text=chart_df["Titres_c1_club"], textposition="inside",
+            customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
         ))
         fig.update_layout(
             barmode="stack", height=max(500, 24 * len(chart_df)),
             xaxis_title=f"Titres (championnat + {continental_label})",
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
         )
+        st.caption("Survolez une barre pour voir la fiche complète du club.")
         st.plotly_chart(fig, use_container_width=True)
 
 # ========================================================================
@@ -745,24 +814,117 @@ with tab_pays:
     choice = st.selectbox("Choisir une feuille", all_sheet_names)
 
     show_color_legend()
-    if choice in CONTINENTAL_COMPETITIONS:
+    is_continental = choice in CONTINENTAL_COMPETITIONS
+    if is_continental:
         sub = df[
             (df["Categorie"] == "Continental - Vainqueurs") & (df["Competition"] == choice)
         ].sort_values("Nb_titres", ascending=False)
-        render_styled_table(sub, [
-            ("Club", "Club"),
-            ("Division_actuelle", "Division actuelle"),
-            ("Niveau_division", "Niveau"),
-            ("Annee_dernier_titre", "Dernier titre"),
-            ("Nb_titres", "Titres"),
-            ("Pays", "Pays"),
-        ])
     else:
         sub = df_national[df_national["Pays"] == choice].sort_values("Nb_titres", ascending=False)
-        render_styled_table(sub, [
-            ("Club", "Club"),
-            ("Division_actuelle", "Division actuelle"),
-            ("Niveau_division", "Niveau"),
-            ("Annee_dernier_titre", "Dernier titre"),
-            ("Nb_titres", "Titres"),
-        ])
+
+    if not sub.empty:
+        sub_charts = sub.copy()
+        sub_charts["CouleurBarre"] = sub_charts["_color"].map(
+            lambda c: COLOR_LEGEND[classify_color(c)]["marker"]
+        )
+        sub_charts["ClubLabel"] = sub_charts["Club"]
+        label_color_map = dict(zip(sub_charts["ClubLabel"], sub_charts["CouleurBarre"]))
+
+        continental_winners = df[df["Categorie"] == "Continental - Vainqueurs"]
+        if not is_continental:
+            sub_charts["Titres_Continental"] = sub_charts["Club"].map(
+                lambda club: int(continental_winners.loc[continental_winners["Club"] == club, "Nb_titres"].sum())
+            )
+
+        def make_card_text(r):
+            """Fiche complète du club, affichée au survol de n'importe quel graphique."""
+            lignes = [f"<b>{r['Club']}</b>"]
+            if is_continental:
+                lignes.append(f"Pays : {r['Pays']}")
+            lignes.append(f"Division : {format_division(r)}")
+            lignes.append(f"Dernier titre : {r['Annee_dernier_titre']}")
+            if is_continental:
+                lignes.append(f"Titres {choice} : {r['Nb_titres']}")
+            else:
+                lignes.append(f"Titres nationaux : {r['Nb_titres']}")
+                lignes.append(f"Titres continentaux : {r['Titres_Continental']}")
+            lignes.append(r["Statut"])
+            if r.get("_non_jouable"):
+                lignes.append("<span style='color:#B91C1C'><b>Non jouable en FM26</b></span>")
+            return "<br>".join(lignes)
+
+        sub_charts["CardText"] = sub_charts.apply(make_card_text, axis=1)
+
+        def apply_card_hover(fig):
+            fig.update_traces(hovertemplate="%{customdata[0]}<extra></extra>")
+            return fig
+
+        st.caption("Survolez un club sur les graphiques ci-dessous pour voir sa fiche complète.")
+
+        st.markdown("#### Niveau de division actuel (1 = plus haut niveau du pays)")
+        fig_niveau = px.bar(
+            sub_charts.sort_values("Niveau_division"), x="ClubLabel", y="Niveau_division",
+            color="ClubLabel", color_discrete_map=label_color_map,
+            custom_data=["CardText"],
+        )
+        fig_niveau.update_layout(height=380, showlegend=False, yaxis_title="Niveau de division", xaxis_title="")
+        apply_card_hover(fig_niveau)
+        st.plotly_chart(fig_niveau, use_container_width=True)
+
+        st.markdown("#### Année du dernier titre (frise chronologique)")
+        timeline_df = sub_charts.dropna(subset=["Annee_dernier_titre"]).sort_values("Annee_dernier_titre")
+        fig_timeline = px.scatter(
+            timeline_df, x="Annee_dernier_titre", y="ClubLabel",
+            color="ClubLabel", color_discrete_map=label_color_map,
+            custom_data=["CardText"],
+        )
+        fig_timeline.update_traces(marker=dict(size=14, line=dict(width=1, color="#444444")))
+        fig_timeline.update_layout(
+            height=max(320, 28 * len(timeline_df)), showlegend=False,
+            xaxis_title="Année du dernier titre", yaxis_title="",
+        )
+        apply_card_hover(fig_timeline)
+        st.plotly_chart(fig_timeline, use_container_width=True)
+
+        if is_continental:
+            st.markdown(f"#### Nombre de titres — {choice}")
+            fig_titres = px.bar(
+                sub_charts.sort_values("Nb_titres"), x="Nb_titres", y="ClubLabel", orientation="h",
+                color="ClubLabel", color_discrete_map=label_color_map,
+                custom_data=["CardText"],
+            )
+            fig_titres.update_layout(
+                height=max(320, 26 * len(sub_charts)), showlegend=False, yaxis_title="",
+                xaxis=dict(title="Titres", dtick=1),
+            )
+            apply_card_hover(fig_titres)
+            st.plotly_chart(fig_titres, use_container_width=True)
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("#### Nombre de titres nationaux")
+                fig_nat = px.bar(
+                    sub_charts.sort_values("Nb_titres"), x="Nb_titres", y="ClubLabel", orientation="h",
+                    color="ClubLabel", color_discrete_map=label_color_map,
+                    custom_data=["CardText"],
+                )
+                fig_nat.update_layout(
+                    height=max(320, 26 * len(sub_charts)), showlegend=False, yaxis_title="",
+                    xaxis=dict(title="Titres nationaux", dtick=1),
+                )
+                apply_card_hover(fig_nat)
+                st.plotly_chart(fig_nat, use_container_width=True)
+            with col2:
+                st.markdown("#### Nombre de titres continentaux")
+                fig_cont = px.bar(
+                    sub_charts.sort_values("Titres_Continental"), x="Titres_Continental", y="ClubLabel", orientation="h",
+                    color="ClubLabel", color_discrete_map=label_color_map,
+                    custom_data=["CardText"],
+                )
+                max_cont = max(1, int(sub_charts["Titres_Continental"].max()))
+                fig_cont.update_layout(
+                    height=max(320, 26 * len(sub_charts)), showlegend=False, yaxis_title="",
+                    xaxis=dict(title="Titres continentaux", range=[0, max_cont], dtick=1),
+                )
+                apply_card_hover(fig_cont)
+                st.plotly_chart(fig_cont, use_container_width=True)
