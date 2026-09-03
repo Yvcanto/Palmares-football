@@ -598,12 +598,22 @@ with tab_compare:
         st.caption("Survolez un club sur les graphiques ci-dessous pour voir sa fiche complète.")
 
         st.markdown("#### Niveau de division actuel (1 = plus haut niveau du pays)")
+        NIVEAU_MAX = 8  # échelle fixe (1 = élite ... 8 = niveau le plus bas du système)
+        compare_df["NiveauHauteur"] = NIVEAU_MAX + 1 - compare_df["Niveau_division"]
         fig_niveau = px.bar(
-            compare_df.reset_index(), x="ClubLabel", y="Niveau_division",
+            compare_df.reset_index(), x="ClubLabel", y="NiveauHauteur",
             color="ClubLabel", color_discrete_map=label_color_map,
             custom_data=["CardText"],
         )
-        fig_niveau.update_layout(height=380, showlegend=False, yaxis_title="Niveau de division", xaxis_title="")
+        fig_niveau.update_layout(
+            height=380, showlegend=False, xaxis_title="", hovermode="x",
+            yaxis=dict(
+                title="Niveau de division",
+                tickmode="array",
+                tickvals=list(range(1, NIVEAU_MAX + 1)),
+                ticktext=[str(NIVEAU_MAX + 1 - v) for v in range(1, NIVEAU_MAX + 1)],
+            ),
+        )
         apply_card_hover(fig_niveau)
         st.plotly_chart(fig_niveau, use_container_width=True)
 
@@ -618,6 +628,7 @@ with tab_compare:
         fig_timeline.update_layout(
             height=max(320, 28 * len(timeline_df)), showlegend=False,
             xaxis_title="Année du dernier titre", yaxis_title="",
+            hovermode="y",
         )
         apply_card_hover(fig_timeline)
         st.plotly_chart(fig_timeline, use_container_width=True)
@@ -634,6 +645,7 @@ with tab_compare:
             fig_nat.update_layout(
                 height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="",
                 xaxis=dict(title="Titres nationaux", dtick=1),
+                hovermode="y",
             )
             apply_card_hover(fig_nat)
             st.plotly_chart(fig_nat, use_container_width=True)
@@ -649,6 +661,7 @@ with tab_compare:
             fig_c1.update_layout(
                 height=max(320, 26 * len(compare_df)), showlegend=False, yaxis_title="",
                 xaxis=dict(title="Titres continentaux", range=[0, max_continental], dtick=1),
+                hovermode="y",
             )
             apply_card_hover(fig_c1)
             st.plotly_chart(fig_c1, use_container_width=True)
@@ -731,7 +744,7 @@ with tab_stats:
             text=chart_df["Titres_nat"], textposition="outside",
             customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
         ))
-        fig.update_layout(height=max(500, 24 * len(chart_df)), xaxis_title="Titres nationaux")
+        fig.update_layout(height=max(500, 24 * len(chart_df)), xaxis_title="Titres nationaux", hovermode="y")
         st.caption("Survolez une barre pour voir la fiche complète du club.")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -754,7 +767,7 @@ with tab_stats:
             text=chart_df["Titres_c1"], textposition="outside",
             customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
         ))
-        fig.update_layout(height=max(400, 24 * len(chart_df)), xaxis_title=f"Titres — {competition_for_stats}")
+        fig.update_layout(height=max(400, 24 * len(chart_df)), xaxis_title=f"Titres — {competition_for_stats}", hovermode="y")
         st.caption("Survolez une barre pour voir la fiche complète du club.")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -801,6 +814,7 @@ with tab_stats:
             barmode="stack", height=max(500, 24 * len(chart_df)),
             xaxis_title=f"Titres (championnat + {continental_label})",
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
+            hovermode="y",
         )
         st.caption("Survolez une barre pour voir la fiche complète du club.")
         st.plotly_chart(fig, use_container_width=True)
@@ -824,8 +838,11 @@ with tab_pays:
 
     if not sub.empty:
         sub_charts = sub.copy()
+        # Gris neutre pour les clubs non surlignés (au lieu du quasi-noir
+        # utilisé sur la carte, invisible en thème sombre sur des barres).
+        CHART_NEUTRAL_COLOR = "#94A3B8"
         sub_charts["CouleurBarre"] = sub_charts["_color"].map(
-            lambda c: COLOR_LEGEND[classify_color(c)]["marker"]
+            lambda c: CHART_NEUTRAL_COLOR if classify_color(c) == "NONE" else COLOR_LEGEND[classify_color(c)]["marker"]
         )
         sub_charts["ClubLabel"] = sub_charts["Club"]
         label_color_map = dict(zip(sub_charts["ClubLabel"], sub_charts["CouleurBarre"]))
@@ -862,12 +879,22 @@ with tab_pays:
         st.caption("Survolez un club sur les graphiques ci-dessous pour voir sa fiche complète.")
 
         st.markdown("#### Niveau de division actuel (1 = plus haut niveau du pays)")
+        NIVEAU_MAX = 8  # échelle fixe (1 = élite ... 8 = niveau le plus bas du système)
+        sub_charts["NiveauHauteur"] = NIVEAU_MAX + 1 - sub_charts["Niveau_division"]
         fig_niveau = px.bar(
-            sub_charts.sort_values("Niveau_division"), x="ClubLabel", y="Niveau_division",
+            sub_charts.sort_values("Niveau_division"), x="ClubLabel", y="NiveauHauteur",
             color="ClubLabel", color_discrete_map=label_color_map,
             custom_data=["CardText"],
         )
-        fig_niveau.update_layout(height=380, showlegend=False, yaxis_title="Niveau de division", xaxis_title="")
+        fig_niveau.update_layout(
+            height=380, showlegend=False, xaxis_title="", hovermode="x",
+            yaxis=dict(
+                title="Niveau de division",
+                tickmode="array",
+                tickvals=list(range(1, NIVEAU_MAX + 1)),
+                ticktext=[str(NIVEAU_MAX + 1 - v) for v in range(1, NIVEAU_MAX + 1)],
+            ),
+        )
         apply_card_hover(fig_niveau)
         st.plotly_chart(fig_niveau, use_container_width=True)
 
@@ -882,6 +909,7 @@ with tab_pays:
         fig_timeline.update_layout(
             height=max(320, 28 * len(timeline_df)), showlegend=False,
             xaxis_title="Année du dernier titre", yaxis_title="",
+            hovermode="y",
         )
         apply_card_hover(fig_timeline)
         st.plotly_chart(fig_timeline, use_container_width=True)
@@ -896,6 +924,7 @@ with tab_pays:
             fig_titres.update_layout(
                 height=max(320, 26 * len(sub_charts)), showlegend=False, yaxis_title="",
                 xaxis=dict(title="Titres", dtick=1),
+                hovermode="y",
             )
             apply_card_hover(fig_titres)
             st.plotly_chart(fig_titres, use_container_width=True)
@@ -911,6 +940,7 @@ with tab_pays:
                 fig_nat.update_layout(
                     height=max(320, 26 * len(sub_charts)), showlegend=False, yaxis_title="",
                     xaxis=dict(title="Titres nationaux", dtick=1),
+                hovermode="y",
                 )
                 apply_card_hover(fig_nat)
                 st.plotly_chart(fig_nat, use_container_width=True)
@@ -925,6 +955,7 @@ with tab_pays:
                 fig_cont.update_layout(
                     height=max(320, 26 * len(sub_charts)), showlegend=False, yaxis_title="",
                     xaxis=dict(title="Titres continentaux", range=[0, max_cont], dtick=1),
+                hovermode="y",
                 )
                 apply_card_hover(fig_cont)
                 st.plotly_chart(fig_cont, use_container_width=True)
