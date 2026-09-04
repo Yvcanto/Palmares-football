@@ -465,15 +465,14 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
     labels = list(labels)
     max_val = x_range[1] if x_range else max(1, max(values) if len(values) else 1)
     fig = go.Figure()
-    # Point invisible à POSITION FIXE (pas une barre pleine largeur) :
-    # la fiche s'affiche donc toujours au même endroit, à droite, sans
-    # jamais recouvrir le nom du club ni le début de la barre, quel que
-    # soit l'endroit précis où l'on survole la ligne (grâce à une grande
-    # tolérance de détection ci-dessous).
-    anchor_x = max_val * 0.9
-    fig.add_trace(go.Scatter(
-        x=[anchor_x] * len(labels), y=labels, mode="markers",
-        marker=dict(size=1, opacity=0),
+    # Piste invisible pleine largeur (déclenche l'infobulle où que l'on
+    # survole la ligne) + hovermode="y" (affiche l'infobulle à la position
+    # réelle de la piste, à droite, pas à l'endroit précis du survol) :
+    # les deux combinés donnent "survol n'importe où, fiche toujours au
+    # même endroit".
+    fig.add_trace(go.Bar(
+        x=[max_val] * len(labels), y=labels, orientation="h",
+        marker=dict(color="rgba(0,0,0,0)"),
         customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
         showlegend=False,
     ))
@@ -486,7 +485,7 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
         barmode="overlay", height=height or max(320, 38 * len(labels)),
         xaxis_title=xaxis_title, yaxis_title="",
         yaxis=dict(categoryorder="array", categoryarray=labels, autorange="reversed", automargin=True),
-        hoverdistance=200,
+        hovermode="y",
     )
     # Graduations toujours horizontales (jamais en diagonale) : si l'échelle
     # est grande, on n'écrit qu'un chiffre sur deux, mais un trait fin reste
@@ -553,14 +552,25 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
     pad = max(1, (x_max - x_min) * 0.08)
     fig = go.Figure()
 
-    # Survol directement sur le point (comportement natif Plotly, simple
-    # et fiable) : les tentatives de piste invisible pleine largeur ont
-    # causé des bugs d'affichage plus gênants que l'avantage apporté.
+    # Piste invisible pleine largeur (une trace par club) + hovermode="y" :
+    # le survol se déclenche n'importe où sur la ligne du club (pas
+    # seulement sur son point), et affiche toujours SA fiche — sans cette
+    # piste, Plotly pouvait afficher la fiche du club voisin le plus
+    # proche du curseur, même en restant sur sa propre ligne.
+    for label, year, card in zip(labels, years, card_texts):
+        if pd.isna(year):
+            continue
+        fig.add_trace(go.Scatter(
+            x=[x_min - pad, x_max + pad], y=[label, label],
+            mode="lines", line=dict(color="rgba(0,0,0,0)", width=22),
+            customdata=[card, card], hovertemplate="%{customdata}<extra></extra>",
+            showlegend=False,
+        ))
+
     fig.add_trace(go.Scatter(
         x=years, y=labels, mode="markers",
         marker=dict(size=16, color=list(colors), line=dict(width=1, color="#444444")),
-        customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
-        showlegend=False,
+        hoverinfo="skip", showlegend=False,
     ))
 
     fig.update_layout(
@@ -568,7 +578,7 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
         xaxis_title="Année du dernier titre", yaxis_title="",
         xaxis=dict(range=[x_min - pad, x_max + pad]),
         yaxis=dict(categoryorder="array", categoryarray=labels, autorange="reversed", automargin=True),
-        hoverdistance=100,
+        hovermode="y",
     )
     return fig
 
@@ -867,15 +877,15 @@ with tab_stats:
         )
 
         fig = go.Figure()
-        # Point invisible à POSITION FIXE (voir make_hbar_with_hover pour
-        # l'explication détaillée) : la fiche s'affiche toujours au même
-        # endroit, à droite, sans jamais recouvrir le nom du pays.
+        # Piste invisible pleine largeur + hovermode="y" (voir
+        # make_hbar_with_hover pour l'explication détaillée) : survol
+        # possible partout sur la ligne, fiche toujours affichée au même
+        # endroit (à droite), sans jamais recouvrir le nom du pays.
         max_total = max(1, chart_df["Total"].max())
         labels_stack = chart_df["Label"].tolist()
-        anchor_x_stack = max_total * 0.9
-        fig.add_trace(go.Scatter(
-            x=[anchor_x_stack] * len(chart_df), y=labels_stack, mode="markers",
-            marker=dict(size=1, opacity=0),
+        fig.add_trace(go.Bar(
+            x=[max_total] * len(chart_df), y=labels_stack, orientation="h",
+            marker=dict(color="rgba(0,0,0,0)"),
             customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
             showlegend=False,
         ))
@@ -897,7 +907,7 @@ with tab_stats:
             xaxis_title=f"Titres (championnat + {continental_label})",
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
             yaxis=dict(categoryorder="array", categoryarray=labels_stack, autorange="reversed", automargin=True),
-            hoverdistance=200,
+            hovermode="y",
         )
         label_step = 2 if max_total > 15 else 1
         fig.update_xaxes(
