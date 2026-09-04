@@ -480,13 +480,14 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
     ))
     # Le nom du club natif (étiquette d'axe) n'est PAS survolable en Plotly.
     # On le masque et on le redessine comme un vrai point de donnée (texte),
-    # qui porte lui aussi l'infobulle complète au survol. Ancré légèrement
-    # à l'intérieur de la zone valide (pas exactement sur la limite à 0,
-    # zone ambiguë où le survol ne déclenche pas toujours l'infobulle).
-    text_x_anchor = max(0.3, max_val * 0.02)
+    # qui porte lui aussi l'infobulle complète au survol. La zone réellement
+    # survolable de Plotly se limite aux abords du point d'ancrage, pas à
+    # tout le texte affiché — le centrer (plutôt qu'aligné à un bord) rend
+    # le survol possible sur l'ensemble du nom, pas juste à une extrémité.
+    text_x_anchor = -max(1, max_val * 0.13)
     fig.add_trace(go.Scatter(
         x=[text_x_anchor] * len(labels), y=labels, mode="text",
-        text=labels, textposition="middle left",
+        text=labels, textposition="middle center",
         textfont=dict(size=12),
         customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
         showlegend=False, cliponaxis=False,
@@ -571,31 +572,47 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
     x_max = max(years_clean) if years_clean else 2026
     pad = max(1, (x_max - x_min) * 0.08)
     fig = go.Figure()
+
+    # Piste invisible pleine largeur : UNE SEULE trace consolidée (segments
+    # séparés par des None), plutôt qu'une trace par club, pour que
+    # l'enregistrement des catégories de l'axe Y reste cohérent avec les
+    # autres traces (marqueurs, texte) — un mélange de plusieurs traces à
+    # un seul point chacune causait un espacement imprévisible et des
+    # lignes qui disparaissaient.
+    line_x, line_y, line_customdata = [], [], []
     for label, year, card in zip(labels, years, card_texts):
         if pd.isna(year):
             continue
-        fig.add_trace(go.Scatter(
-            x=[x_min - pad, x_max + pad], y=[label, label],
-            mode="lines", line=dict(color="rgba(0,0,0,0)", width=22),
-            customdata=[card, card], hovertemplate="%{customdata}<extra></extra>",
-            showlegend=False,
-        ))
+        line_x += [x_min - pad, x_max + pad, None]
+        line_y += [label, label, None]
+        line_customdata += [card, card, None]
+    fig.add_trace(go.Scatter(
+        x=line_x, y=line_y, mode="lines",
+        line=dict(color="rgba(0,0,0,0)", width=22),
+        customdata=line_customdata, hovertemplate="%{customdata}<extra></extra>",
+        showlegend=False,
+    ))
+
     fig.add_trace(go.Scatter(
         x=years, y=labels, mode="markers",
         marker=dict(size=14, color=list(colors), line=dict(width=1, color="#444444")),
         hoverinfo="skip", showlegend=False,
     ))
-    # Nom du club redessiné en texte hoverable (même principe que ci-dessus),
-    # ancré légèrement à l'intérieur de la zone valide (pas exactement sur
-    # la limite gauche, zone ambiguë pour le survol).
-    text_x_anchor = x_min - pad * 0.85
+
+    # Nom du club redessiné en texte hoverable, CENTRÉ sur son point
+    # d'ancrage (et non aligné à un bord) : la zone réellement survolable
+    # de Plotly se limite aux abords du point de donnée, pas à tout le
+    # texte affiché — le centrer rend le survol possible sur l'ensemble
+    # du nom plutôt qu'à une seule extrémité.
+    text_x_anchor = x_min - pad * 0.55
     fig.add_trace(go.Scatter(
         x=[text_x_anchor] * len(labels), y=labels, mode="text",
-        text=labels, textposition="middle left",
+        text=labels, textposition="middle center",
         textfont=dict(size=12),
         customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
         showlegend=False, cliponaxis=False,
     ))
+
     fig.update_layout(
         height=height or max(320, 28 * len(labels)),
         xaxis_title="Année du dernier titre", yaxis_title="",
@@ -605,6 +622,7 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
             categoryorder="array", categoryarray=labels,
             autorange="reversed",
         ),
+        margin=dict(l=190),
     )
     return fig
 
@@ -941,12 +959,12 @@ with tab_stats:
             hoverinfo="skip",
         ))
         # Nom du pays (étiquette native non survolable) redessiné en texte
-        # hoverable, comme sur les autres graphiques. Ancré légèrement à
-        # l'intérieur de la zone valide, pas exactement sur la limite à 0.
-        text_x_anchor_stack = max(0.3, max_total * 0.02)
+        # hoverable, CENTRÉ sur son ancrage (voir explication détaillée
+        # dans make_hbar_with_hover) pour un survol possible sur tout le nom.
+        text_x_anchor_stack = -max(1, max_total * 0.13)
         fig.add_trace(go.Scatter(
             x=[text_x_anchor_stack] * len(labels_stack), y=labels_stack, mode="text",
-            text=labels_stack, textposition="middle left",
+            text=labels_stack, textposition="middle center",
             textfont=dict(size=12),
             customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
             showlegend=False, cliponaxis=False,
