@@ -480,9 +480,12 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
     ))
     # Le nom du club natif (étiquette d'axe) n'est PAS survolable en Plotly.
     # On le masque et on le redessine comme un vrai point de donnée (texte),
-    # qui porte lui aussi l'infobulle complète au survol.
+    # qui porte lui aussi l'infobulle complète au survol. Ancré légèrement
+    # à l'intérieur de la zone valide (pas exactement sur la limite à 0,
+    # zone ambiguë où le survol ne déclenche pas toujours l'infobulle).
+    text_x_anchor = max(0.3, max_val * 0.02)
     fig.add_trace(go.Scatter(
-        x=[0] * len(labels), y=labels, mode="text",
+        x=[text_x_anchor] * len(labels), y=labels, mode="text",
         text=labels, textposition="middle left",
         textfont=dict(size=12),
         customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
@@ -536,9 +539,13 @@ def make_vbar_with_hover(labels, values, colors, card_texts, yaxis_title, height
     # Même principe que pour les barres horizontales : le nom du club en
     # bas de l'axe X n'est pas survolable nativement, on le redessine en
     # texte hoverable sous chaque colonne (texte horizontal — Plotly ne
-    # permet pas de faire pivoter du texte sur une trace Scatter).
+    # permet pas de faire pivoter du texte sur une trace Scatter). Avec
+    # beaucoup de clubs, les noms sont échelonnés sur 2 rangées en
+    # quinconce pour rester lisibles au lieu de se chevaucher.
+    stagger = len(labels) > 10
+    text_y = [(-0.9 if i % 2 else 0) for i in range(len(labels))] if stagger else [0] * len(labels)
     fig.add_trace(go.Scatter(
-        x=labels, y=[0] * len(labels), mode="text",
+        x=labels, y=text_y, mode="text",
         text=labels, textposition="bottom center",
         textfont=dict(size=11),
         customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
@@ -547,8 +554,9 @@ def make_vbar_with_hover(labels, values, colors, card_texts, yaxis_title, height
     yaxis_config = dict(title=yaxis_title)
     if tickvals is not None:
         yaxis_config.update(tickmode="array", tickvals=tickvals, ticktext=ticktext)
+    yaxis_config["range"] = [-1.8 if stagger else -0.6, max_val + 0.5]
     fig.update_layout(
-        barmode="overlay", height=height,
+        barmode="overlay", height=height + (40 if stagger else 0),
         xaxis_title="", xaxis=dict(showticklabels=False, categoryorder="array", categoryarray=labels),
         yaxis=yaxis_config,
         margin=dict(b=150),
@@ -577,9 +585,12 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
         marker=dict(size=14, color=list(colors), line=dict(width=1, color="#444444")),
         hoverinfo="skip", showlegend=False,
     ))
-    # Nom du club redessiné en texte hoverable (même principe que ci-dessus).
+    # Nom du club redessiné en texte hoverable (même principe que ci-dessus),
+    # ancré légèrement à l'intérieur de la zone valide (pas exactement sur
+    # la limite gauche, zone ambiguë pour le survol).
+    text_x_anchor = x_min - pad * 0.85
     fig.add_trace(go.Scatter(
-        x=[x_min - pad] * len(labels), y=labels, mode="text",
+        x=[text_x_anchor] * len(labels), y=labels, mode="text",
         text=labels, textposition="middle left",
         textfont=dict(size=12),
         customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
@@ -594,7 +605,6 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
             categoryorder="array", categoryarray=labels,
             autorange="reversed",
         ),
-        margin=dict(l=190),
     )
     return fig
 
@@ -931,9 +941,11 @@ with tab_stats:
             hoverinfo="skip",
         ))
         # Nom du pays (étiquette native non survolable) redessiné en texte
-        # hoverable, comme sur les autres graphiques.
+        # hoverable, comme sur les autres graphiques. Ancré légèrement à
+        # l'intérieur de la zone valide, pas exactement sur la limite à 0.
+        text_x_anchor_stack = max(0.3, max_total * 0.02)
         fig.add_trace(go.Scatter(
-            x=[0] * len(labels_stack), y=labels_stack, mode="text",
+            x=[text_x_anchor_stack] * len(labels_stack), y=labels_stack, mode="text",
             text=labels_stack, textposition="middle left",
             textfont=dict(size=12),
             customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
