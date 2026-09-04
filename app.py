@@ -465,11 +465,15 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
     labels = list(labels)
     max_val = x_range[1] if x_range else max(1, max(values) if len(values) else 1)
     fig = go.Figure()
-    # Piste invisible pleine largeur : porte l'infobulle pour tout survol
-    # dans la zone du graphique (barre courte ou longue, peu importe).
-    fig.add_trace(go.Bar(
-        x=[max_val] * len(labels), y=labels, orientation="h",
-        marker=dict(color="rgba(0,0,0,0)"),
+    # Point invisible à POSITION FIXE (pas une barre pleine largeur) :
+    # la fiche s'affiche donc toujours au même endroit, à droite, sans
+    # jamais recouvrir le nom du club ni le début de la barre, quel que
+    # soit l'endroit précis où l'on survole la ligne (grâce à une grande
+    # tolérance de détection ci-dessous).
+    anchor_x = max_val * 0.9
+    fig.add_trace(go.Scatter(
+        x=[anchor_x] * len(labels), y=labels, mode="markers",
+        marker=dict(size=1, opacity=0),
         customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
         showlegend=False,
     ))
@@ -482,7 +486,7 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
         barmode="overlay", height=height or max(320, 38 * len(labels)),
         xaxis_title=xaxis_title, yaxis_title="",
         yaxis=dict(categoryorder="array", categoryarray=labels, autorange="reversed", automargin=True),
-        hoverdistance=100,
+        hoverdistance=200,
     )
     # Graduations toujours horizontales (jamais en diagonale) : si l'échelle
     # est grande, on n'écrit qu'un chiffre sur deux, mais un trait fin reste
@@ -522,10 +526,19 @@ def make_vbar_with_hover(labels, values, colors, card_texts, yaxis_title, height
     yaxis_config = dict(title=yaxis_title)
     if tickvals is not None:
         yaxis_config.update(tickmode="array", tickvals=tickvals, ticktext=ticktext)
+    # Au-delà de 10 clubs, un nom sur deux est poussé sur une ligne
+    # supplémentaire (via <br>, nativement géré par Plotly) pour éviter
+    # que les noms ne se chevauchent — sans passer par une trace de texte
+    # personnalisée, qui cassait le survol.
+    stagger = len(labels) > 10
+    xaxis_ticktext = [("<br>" + l if stagger and i % 2 else l) for i, l in enumerate(labels)]
     fig.update_layout(
-        barmode="overlay", height=height,
+        barmode="overlay", height=height + (30 if stagger else 0),
         xaxis_title="",
-        xaxis=dict(categoryorder="array", categoryarray=labels, automargin=True, tickangle=0),
+        xaxis=dict(
+            categoryorder="array", categoryarray=labels, automargin=True, tickangle=0,
+            tickmode="array", tickvals=labels, ticktext=xaxis_ticktext,
+        ),
         yaxis=yaxis_config,
         hoverdistance=100,
     )
@@ -854,16 +867,15 @@ with tab_stats:
         )
 
         fig = go.Figure()
-        # Piste invisible pleine largeur : seule elle porte l'infobulle,
-        # pour un survol possible partout sur la ligne (nom du pays compris).
-        # barmode="overlay" + positionnement manuel des segments (base=...)
-        # plutôt que barmode="stack", pour que la piste invisible puisse bien
-        # couvrir toute la largeur sans être elle-même empilée par-dessus.
+        # Point invisible à POSITION FIXE (voir make_hbar_with_hover pour
+        # l'explication détaillée) : la fiche s'affiche toujours au même
+        # endroit, à droite, sans jamais recouvrir le nom du pays.
         max_total = max(1, chart_df["Total"].max())
         labels_stack = chart_df["Label"].tolist()
-        fig.add_trace(go.Bar(
-            x=[max_total] * len(chart_df), y=labels_stack, orientation="h",
-            marker=dict(color="rgba(0,0,0,0)"),
+        anchor_x_stack = max_total * 0.9
+        fig.add_trace(go.Scatter(
+            x=[anchor_x_stack] * len(chart_df), y=labels_stack, mode="markers",
+            marker=dict(size=1, opacity=0),
             customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
             showlegend=False,
         ))
@@ -885,7 +897,7 @@ with tab_stats:
             xaxis_title=f"Titres (championnat + {continental_label})",
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
             yaxis=dict(categoryorder="array", categoryarray=labels_stack, autorange="reversed", automargin=True),
-            hoverdistance=100,
+            hoverdistance=200,
         )
         label_step = 2 if max_total > 15 else 1
         fig.update_xaxes(
