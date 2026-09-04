@@ -168,6 +168,27 @@ with tab_carte:
             return r["Division_actuelle"]
         return f"{r['Division_actuelle']} (D{int(niveau)})"
 
+    def wrap_long_text(text, max_len=45):
+        """Insère un <br> près du milieu d'un texte trop long (ex: le
+        libellé du statut orange, particulièrement long), pour que la
+        fiche reste compacte plutôt que de s'étaler sur une seule ligne
+        très large."""
+        if len(text) <= max_len:
+            return text
+        mid = len(text) // 2
+        # Cherche l'espace le plus proche du milieu pour couper un mot entier
+        left_space = text.rfind(" ", 0, mid)
+        right_space = text.find(" ", mid)
+        if left_space == -1:
+            cut = right_space
+        elif right_space == -1:
+            cut = left_space
+        else:
+            cut = left_space if (mid - left_space) <= (right_space - mid) else right_space
+        if cut == -1:
+            return text
+        return text[:cut] + "<br>" + text[cut + 1:]
+
     def make_hover_text(r):
         txt = (
             f"<b>{r['Club']}</b><br>"
@@ -715,7 +736,7 @@ with tab_compare:
                 f"Dernier titre : {r['Annee_dernier_titre']}",
                 f"Titres nationaux : {r['Nb_titres']}",
                 f"Titres continentaux : {r['Titres_Continental']}",
-                COLOR_LEGEND[r["Classified"]]["label"],
+                wrap_long_text(COLOR_LEGEND[r["Classified"]]["label"]),
             ]
             return "<br>".join(lignes)
 
@@ -966,7 +987,7 @@ with tab_pays:
             else:
                 lignes.append(f"Titres nationaux : {r['Nb_titres']}")
                 lignes.append(f"Titres continentaux : {r['Titres_Continental']}")
-            lignes.append(r["Statut"])
+            lignes.append(wrap_long_text(r["Statut"]))
             if r.get("_non_jouable"):
                 lignes.append("<span style='color:#B91C1C'><b>Non jouable en FM26</b></span>")
             return "<br>".join(lignes)
