@@ -479,7 +479,7 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
         hoverinfo="skip", showlegend=False,
     ))
     fig.update_layout(
-        barmode="overlay", height=height or max(320, 26 * len(labels)),
+        barmode="overlay", height=height or max(320, 38 * len(labels)),
         xaxis_title=xaxis_title, yaxis_title="",
         yaxis=dict(categoryorder="array", categoryarray=labels, autorange="reversed", automargin=True),
         hoverdistance=100,
@@ -524,7 +524,8 @@ def make_vbar_with_hover(labels, values, colors, card_texts, yaxis_title, height
         yaxis_config.update(tickmode="array", tickvals=tickvals, ticktext=ticktext)
     fig.update_layout(
         barmode="overlay", height=height,
-        xaxis_title="", xaxis=dict(categoryorder="array", categoryarray=labels, automargin=True),
+        xaxis_title="",
+        xaxis=dict(categoryorder="array", categoryarray=labels, automargin=True, tickangle=0),
         yaxis=yaxis_config,
         hoverdistance=100,
     )
@@ -539,27 +540,18 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
     pad = max(1, (x_max - x_min) * 0.08)
     fig = go.Figure()
 
-    # Piste invisible pleine largeur (une trace par club) : porte
-    # l'infobulle pour tout survol dans la zone du graphique, peu importe
-    # où se trouve le point réel (année ancienne ou récente).
-    for label, year, card in zip(labels, years, card_texts):
-        if pd.isna(year):
-            continue
-        fig.add_trace(go.Scatter(
-            x=[x_min - pad, x_max + pad], y=[label, label],
-            mode="lines", line=dict(color="rgba(0,0,0,0)", width=22),
-            customdata=[card, card], hovertemplate="%{customdata}<extra></extra>",
-            showlegend=False,
-        ))
-
+    # Survol directement sur le point (comportement natif Plotly, simple
+    # et fiable) : les tentatives de piste invisible pleine largeur ont
+    # causé des bugs d'affichage plus gênants que l'avantage apporté.
     fig.add_trace(go.Scatter(
         x=years, y=labels, mode="markers",
-        marker=dict(size=14, color=list(colors), line=dict(width=1, color="#444444")),
-        hoverinfo="skip", showlegend=False,
+        marker=dict(size=16, color=list(colors), line=dict(width=1, color="#444444")),
+        customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
+        showlegend=False,
     ))
 
     fig.update_layout(
-        height=height or max(320, 28 * len(labels)),
+        height=height or max(320, 32 * len(labels)),
         xaxis_title="Année du dernier titre", yaxis_title="",
         xaxis=dict(range=[x_min - pad, x_max + pad]),
         yaxis=dict(categoryorder="array", categoryarray=labels, autorange="reversed", automargin=True),
@@ -745,17 +737,6 @@ with tab_compare:
             )
             st.plotly_chart(fig_c1, use_container_width=True)
 
-        st.divider()
-        st.dataframe(
-            compare_df[["Pays", "Division_actuelle", "Niveau_division", "Annee_dernier_titre", "Nb_titres", "Titres_Continental"]]
-            .rename(columns={
-                "Division_actuelle": "Division actuelle", "Niveau_division": "Niveau",
-                "Annee_dernier_titre": "Dernier titre", "Nb_titres": "Titres nationaux",
-                "Titres_Continental": "Titres continentaux",
-            }),
-            use_container_width=True,
-        )
-
 # ========================================================================
 # ONGLET 3 — STATISTIQUES GLOBALES
 # ========================================================================
@@ -820,7 +801,7 @@ with tab_stats:
         fig = make_hbar_with_hover(
             chart_df["Label"].tolist(), chart_df["Titres_nat"].tolist(),
             [COLOR_CHAMP] * len(chart_df), chart_df["CardText"].tolist(),
-            xaxis_title="Titres nationaux", height=max(500, 24 * len(chart_df)),
+            xaxis_title="Titres nationaux", height=max(500, 38 * len(chart_df)),
         )
         st.caption("Survolez la ligne d'un pays (partout, y compris son nom) pour voir la fiche complète.")
         st.plotly_chart(fig, use_container_width=True)
@@ -841,7 +822,7 @@ with tab_stats:
         fig = make_hbar_with_hover(
             chart_df["Label"].tolist(), chart_df["Titres_c1"].tolist(),
             [COLOR_LDC] * len(chart_df), chart_df["CardText"].tolist(),
-            xaxis_title=f"Titres — {competition_for_stats}", height=max(400, 24 * len(chart_df)),
+            xaxis_title=f"Titres — {competition_for_stats}", height=max(400, 38 * len(chart_df)),
         )
         st.caption("Survolez la ligne d'un pays (partout, y compris son nom) pour voir la fiche complète.")
         st.plotly_chart(fig, use_container_width=True)
@@ -900,7 +881,7 @@ with tab_stats:
             hoverinfo="skip",
         ))
         fig.update_layout(
-            barmode="overlay", height=max(500, 24 * len(chart_df)),
+            barmode="overlay", height=max(500, 38 * len(chart_df)),
             xaxis_title=f"Titres (championnat + {continental_label})",
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
             yaxis=dict(categoryorder="array", categoryarray=labels_stack, autorange="reversed", automargin=True),
