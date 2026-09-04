@@ -478,29 +478,11 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
         marker=dict(color=list(colors)),
         hoverinfo="skip", showlegend=False,
     ))
-    # Le nom du club natif (étiquette d'axe) n'est PAS survolable en Plotly.
-    # On le masque et on le redessine comme un vrai point de donnée (texte),
-    # qui porte lui aussi l'infobulle complète au survol. La zone réellement
-    # survolable de Plotly se limite aux abords du point d'ancrage, pas à
-    # tout le texte affiché — le centrer (plutôt qu'aligné à un bord) rend
-    # le survol possible sur l'ensemble du nom, pas juste à une extrémité.
-    text_x_anchor = -max(1, max_val * 0.13)
-    fig.add_trace(go.Scatter(
-        x=[text_x_anchor] * len(labels), y=labels, mode="text",
-        text=labels, textposition="middle center",
-        textfont=dict(size=12),
-        customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
-        showlegend=False, cliponaxis=False,
-    ))
     fig.update_layout(
         barmode="overlay", height=height or max(320, 26 * len(labels)),
         xaxis_title=xaxis_title, yaxis_title="",
-        yaxis=dict(
-            showticklabels=False,
-            categoryorder="array", categoryarray=labels,
-            autorange="reversed",
-        ),
-        margin=dict(l=190),
+        yaxis=dict(categoryorder="array", categoryarray=labels, autorange="reversed", automargin=True),
+        hoverdistance=100,
     )
     # Graduations toujours horizontales (jamais en diagonale) : si l'échelle
     # est grande, on n'écrit qu'un chiffre sur deux, mais un trait fin reste
@@ -537,30 +519,14 @@ def make_vbar_with_hover(labels, values, colors, card_texts, yaxis_title, height
         marker=dict(color=list(colors)),
         hoverinfo="skip", showlegend=False,
     ))
-    # Même principe que pour les barres horizontales : le nom du club en
-    # bas de l'axe X n'est pas survolable nativement, on le redessine en
-    # texte hoverable sous chaque colonne (texte horizontal — Plotly ne
-    # permet pas de faire pivoter du texte sur une trace Scatter). Avec
-    # beaucoup de clubs, les noms sont échelonnés sur 2 rangées en
-    # quinconce pour rester lisibles au lieu de se chevaucher.
-    stagger = len(labels) > 10
-    text_y = [(-0.9 if i % 2 else 0) for i in range(len(labels))] if stagger else [0] * len(labels)
-    fig.add_trace(go.Scatter(
-        x=labels, y=text_y, mode="text",
-        text=labels, textposition="bottom center",
-        textfont=dict(size=11),
-        customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
-        showlegend=False, cliponaxis=False,
-    ))
     yaxis_config = dict(title=yaxis_title)
     if tickvals is not None:
         yaxis_config.update(tickmode="array", tickvals=tickvals, ticktext=ticktext)
-    yaxis_config["range"] = [-1.8 if stagger else -0.6, max_val + 0.5]
     fig.update_layout(
-        barmode="overlay", height=height + (40 if stagger else 0),
-        xaxis_title="", xaxis=dict(showticklabels=False, categoryorder="array", categoryarray=labels),
+        barmode="overlay", height=height,
+        xaxis_title="", xaxis=dict(categoryorder="array", categoryarray=labels, automargin=True),
         yaxis=yaxis_config,
-        margin=dict(b=150),
+        hoverdistance=100,
     )
     return fig
 
@@ -573,25 +539,18 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
     pad = max(1, (x_max - x_min) * 0.08)
     fig = go.Figure()
 
-    # Piste invisible pleine largeur : UNE SEULE trace consolidée (segments
-    # séparés par des None), plutôt qu'une trace par club, pour que
-    # l'enregistrement des catégories de l'axe Y reste cohérent avec les
-    # autres traces (marqueurs, texte) — un mélange de plusieurs traces à
-    # un seul point chacune causait un espacement imprévisible et des
-    # lignes qui disparaissaient.
-    line_x, line_y, line_customdata = [], [], []
+    # Piste invisible pleine largeur (une trace par club) : porte
+    # l'infobulle pour tout survol dans la zone du graphique, peu importe
+    # où se trouve le point réel (année ancienne ou récente).
     for label, year, card in zip(labels, years, card_texts):
         if pd.isna(year):
             continue
-        line_x += [x_min - pad, x_max + pad, None]
-        line_y += [label, label, None]
-        line_customdata += [card, card, None]
-    fig.add_trace(go.Scatter(
-        x=line_x, y=line_y, mode="lines",
-        line=dict(color="rgba(0,0,0,0)", width=22),
-        customdata=line_customdata, hovertemplate="%{customdata}<extra></extra>",
-        showlegend=False,
-    ))
+        fig.add_trace(go.Scatter(
+            x=[x_min - pad, x_max + pad], y=[label, label],
+            mode="lines", line=dict(color="rgba(0,0,0,0)", width=22),
+            customdata=[card, card], hovertemplate="%{customdata}<extra></extra>",
+            showlegend=False,
+        ))
 
     fig.add_trace(go.Scatter(
         x=years, y=labels, mode="markers",
@@ -599,30 +558,12 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
         hoverinfo="skip", showlegend=False,
     ))
 
-    # Nom du club redessiné en texte hoverable, CENTRÉ sur son point
-    # d'ancrage (et non aligné à un bord) : la zone réellement survolable
-    # de Plotly se limite aux abords du point de donnée, pas à tout le
-    # texte affiché — le centrer rend le survol possible sur l'ensemble
-    # du nom plutôt qu'à une seule extrémité.
-    text_x_anchor = x_min - pad * 0.55
-    fig.add_trace(go.Scatter(
-        x=[text_x_anchor] * len(labels), y=labels, mode="text",
-        text=labels, textposition="middle center",
-        textfont=dict(size=12),
-        customdata=list(card_texts), hovertemplate="%{customdata}<extra></extra>",
-        showlegend=False, cliponaxis=False,
-    ))
-
     fig.update_layout(
         height=height or max(320, 28 * len(labels)),
         xaxis_title="Année du dernier titre", yaxis_title="",
         xaxis=dict(range=[x_min - pad, x_max + pad]),
-        yaxis=dict(
-            showticklabels=False,
-            categoryorder="array", categoryarray=labels,
-            autorange="reversed",
-        ),
-        margin=dict(l=190),
+        yaxis=dict(categoryorder="array", categoryarray=labels, autorange="reversed", automargin=True),
+        hoverdistance=100,
     )
     return fig
 
@@ -958,27 +899,12 @@ with tab_stats:
             text=chart_df["Titres_c1_club"], textposition="inside",
             hoverinfo="skip",
         ))
-        # Nom du pays (étiquette native non survolable) redessiné en texte
-        # hoverable, CENTRÉ sur son ancrage (voir explication détaillée
-        # dans make_hbar_with_hover) pour un survol possible sur tout le nom.
-        text_x_anchor_stack = -max(1, max_total * 0.13)
-        fig.add_trace(go.Scatter(
-            x=[text_x_anchor_stack] * len(labels_stack), y=labels_stack, mode="text",
-            text=labels_stack, textposition="middle center",
-            textfont=dict(size=12),
-            customdata=chart_df["CardText"], hovertemplate="%{customdata}<extra></extra>",
-            showlegend=False, cliponaxis=False,
-        ))
         fig.update_layout(
             barmode="overlay", height=max(500, 24 * len(chart_df)),
             xaxis_title=f"Titres (championnat + {continental_label})",
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
-            yaxis=dict(
-                showticklabels=False,
-                categoryorder="array", categoryarray=labels_stack,
-                autorange="reversed",
-            ),
-            margin=dict(l=220),
+            yaxis=dict(categoryorder="array", categoryarray=labels_stack, autorange="reversed", automargin=True),
+            hoverdistance=100,
         )
         label_step = 2 if max_total > 15 else 1
         fig.update_xaxes(
