@@ -467,9 +467,9 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
     fig = go.Figure()
     # Piste invisible pleine largeur (déclenche l'infobulle où que l'on
     # survole la ligne) + hovermode="y" (affiche l'infobulle à la position
-    # réelle de la piste, à droite, pas à l'endroit précis du survol) :
-    # les deux combinés donnent "survol n'importe où, fiche toujours au
-    # même endroit".
+    # réelle de la piste — ici à droite — plutôt qu'à l'endroit précis du
+    # survol) : les deux combinés donnent "survol n'importe où sur la
+    # ligne, fiche toujours au même endroit".
     fig.add_trace(go.Bar(
         x=[max_val] * len(labels), y=labels, orientation="h",
         marker=dict(color="rgba(0,0,0,0)"),
@@ -552,20 +552,24 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
     pad = max(1, (x_max - x_min) * 0.08)
     fig = go.Figure()
 
-    # Piste invisible pleine largeur (une trace par club) + hovermode="y" :
-    # le survol se déclenche n'importe où sur la ligne du club (pas
-    # seulement sur son point), et affiche toujours SA fiche — sans cette
-    # piste, Plotly pouvait afficher la fiche du club voisin le plus
-    # proche du curseur, même en restant sur sa propre ligne.
+    # Piste invisible pleine largeur : UNE SEULE trace consolidée (segments
+    # séparés par des None), pas une trace par club — avec hovermode="y",
+    # plusieurs traces séparées déclenchaient chacune leur propre fiche
+    # simultanément (plusieurs fiches empilées en diagonale). Une seule
+    # trace élimine ce problème, comme pour les barres horizontales.
+    line_x, line_y, line_customdata = [], [], []
     for label, year, card in zip(labels, years, card_texts):
         if pd.isna(year):
             continue
-        fig.add_trace(go.Scatter(
-            x=[x_min - pad, x_max + pad], y=[label, label],
-            mode="lines", line=dict(color="rgba(0,0,0,0)", width=22),
-            customdata=[card, card], hovertemplate="%{customdata}<extra></extra>",
-            showlegend=False,
-        ))
+        line_x += [x_min - pad, x_max + pad, None]
+        line_y += [label, label, None]
+        line_customdata += [card, card, None]
+    fig.add_trace(go.Scatter(
+        x=line_x, y=line_y, mode="lines",
+        line=dict(color="rgba(0,0,0,0)", width=22),
+        customdata=line_customdata, hovertemplate="%{customdata}<extra></extra>",
+        showlegend=False,
+    ))
 
     fig.add_trace(go.Scatter(
         x=years, y=labels, mode="markers",
