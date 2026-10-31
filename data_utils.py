@@ -89,6 +89,7 @@ HEADER_COLOR = "#1F4E78"
 # ------------------------------------------------------------------
 COUNTRY_TO_ISO3 = {
     "Afrique du Sud": "ZAF", "Allemagne": "DEU", "Angleterre": "GBR",
+    "Arabie Saoudite": "SAU",
     "Argentine": "ARG", "Australie": "AUS", "Autriche": "AUT",
     "Belgique": "BEL", "Biélorussie": "BLR", "Brésil": "BRA",
     "Bulgarie": "BGR", "Canada": "CAN", "Chili": "CHL", "Chine": "CHN",
@@ -137,7 +138,7 @@ COUNTRY_TO_CONTINENT = {
     "Chili": "Amériques", "Colombie": "Amériques", "États-Unis": "Amériques",
     "Mexique": "Amériques", "Pérou": "Amériques", "Uruguay": "Amériques",
 
-    "Australie": "Asie", "Chine": "Asie", "Corée du Sud": "Asie",
+    "Arabie Saoudite": "Asie", "Australie": "Asie", "Chine": "Asie", "Corée du Sud": "Asie",
     "Émirats Arabes Unis": "Asie", "Hong Kong": "Asie", "Inde": "Asie",
     "Indonésie": "Asie", "Japon": "Asie", "Malaisie": "Asie",
     "Singapour": "Asie",
