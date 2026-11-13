@@ -147,6 +147,11 @@ def show_color_legend(show_red_name_convention=True):
 # ----------------------------------------------------------------------
 st.title("⚽ Palmarès Football FM — Tableau de bord")
 st.link_button("🎡 La roue du destin : tirer un club au hasard", WHEEL_URL)
+st.caption(
+    "1️⃣ Tourner la 1ère roue pour choisir le continent et le type d'ancien champion.  \n"
+    "2️⃣ Tourner la roue correspondante pour choisir le pays.  \n"
+    "3️⃣ Revenir sur ce site pour voir quelle est l'équipe à prendre en fonction des résultats des roues."
+)
 
 tab_carte, tab_compare, tab_stats, tab_pays = st.tabs(
     ["🗺️ Carte interactive", "⚖️ Comparateur de clubs",
