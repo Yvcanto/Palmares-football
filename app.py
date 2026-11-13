@@ -34,6 +34,9 @@ st.set_page_config(
     layout="wide",
 )
 
+# Lien vers la "roue du destin" (à remplacer par l'adresse de TA roue)
+WHEEL_URL = "https://wheelofnames.com/fr/"
+
 DEFAULT_XLSX_NAME = "Palmares_Football_FM26_Complet_V3.xlsx"
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_XLSX_PATH = os.path.join(HERE, DEFAULT_XLSX_NAME)
@@ -143,6 +146,7 @@ def show_color_legend(show_red_name_convention=True):
 # En-tête
 # ----------------------------------------------------------------------
 st.title("⚽ Palmarès Football FM — Tableau de bord")
+st.link_button("🎡 La roue du destin : tirer un club au hasard", WHEEL_URL)
 
 tab_carte, tab_compare, tab_stats, tab_pays = st.tabs(
     ["🗺️ Carte interactive", "⚖️ Comparateur de clubs",
