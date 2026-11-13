@@ -35,7 +35,7 @@ st.set_page_config(
 )
 
 # Lien vers la "roue du destin" (à remplacer par l'adresse de TA roue)
-WHEEL_URL = "https://wheelofnames.com/fr/"
+WHEEL_URL = "https://wheelofnames.com/fr/gr4-f29"
 
 DEFAULT_XLSX_NAME = "Palmares_Football_FM26_Complet_V3.xlsx"
 HERE = os.path.dirname(os.path.abspath(__file__))
