@@ -38,8 +38,9 @@ st.set_page_config(
 # Lien vers la "roue du destin" (à remplacer par l'adresse de TA roue)
 WHEEL_URL = "https://wheelofnames.com/fr/gr4-f29"
 # Réglages du recadrage de la roue (en pixels) : à ajuster si besoin
-WHEEL_CROP_TOP = 120         # partie du haut de la page des roues à masquer
-WHEEL_VISIBLE_HEIGHT = 650   # hauteur affichée (roues + titres)
+WHEEL_CROP_TOP = 125         # partie du haut de la page des roues à masquer
+WHEEL_VISIBLE_HEIGHT = 330   # hauteur affichée (titres + roues)
+WHEEL_FRAME_HEIGHT = 770     # hauteur réelle du site des roues (ne pas changer : évite de décaler les roues)
 
 DEFAULT_XLSX_NAME = "Palmares_Football_FM26_Complet_V3.xlsx"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -158,7 +159,7 @@ with st.expander("🎡 La roue du destin : tirer un club au hasard"):
         f"""
         <div style="height:{WHEEL_VISIBLE_HEIGHT}px; overflow:hidden; border-radius:8px;">
           <iframe src="{WHEEL_URL}" scrolling="no"
-                  style="border:0; width:100%; height:{WHEEL_VISIBLE_HEIGHT + WHEEL_CROP_TOP}px;
+                  style="border:0; width:100%; height:{WHEEL_FRAME_HEIGHT}px;
                          margin-top:-{WHEEL_CROP_TOP}px;"></iframe>
         </div>
         """,
