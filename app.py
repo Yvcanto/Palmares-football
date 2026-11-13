@@ -13,6 +13,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 from data_utils import (
     COLOR_LEGEND,
@@ -146,7 +147,9 @@ def show_color_legend(show_red_name_convention=True):
 # En-tête
 # ----------------------------------------------------------------------
 st.title("⚽ Palmarès Football FM — Tableau de bord")
-st.link_button("🎡 La roue du destin : tirer un club au hasard", WHEEL_URL)
+with st.expander("🎡 La roue du destin : tirer un club au hasard"):
+    st.link_button("↗️ Ouvrir la roue dans un nouvel onglet (si elle ne s'affiche pas ci-dessous)", WHEEL_URL)
+    components.iframe(WHEEL_URL, height=750, scrolling=True)
 st.caption(
     "1️⃣ Tourner la 1ère roue pour choisir le continent et le type d'ancien champion.  \n"
     "2️⃣ Tourner la roue correspondante pour choisir le pays.  \n"
