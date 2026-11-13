@@ -37,6 +37,9 @@ st.set_page_config(
 
 # Lien vers la "roue du destin" (à remplacer par l'adresse de TA roue)
 WHEEL_URL = "https://wheelofnames.com/fr/gr4-f29"
+# Réglages du recadrage de la roue (en pixels) : à ajuster si besoin
+WHEEL_CROP_TOP = 120         # partie du haut de la page des roues à masquer
+WHEEL_VISIBLE_HEIGHT = 650   # hauteur affichée (roues + titres)
 
 DEFAULT_XLSX_NAME = "Palmares_Football_FM26_Complet_V3.xlsx"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -149,7 +152,18 @@ def show_color_legend(show_red_name_convention=True):
 st.title("⚽ Palmarès Football FM — Tableau de bord")
 with st.expander("🎡 La roue du destin : tirer un club au hasard"):
     st.link_button("↗️ Ouvrir la roue dans un nouvel onglet (si elle ne s'affiche pas ci-dessous)", WHEEL_URL)
-    components.iframe(WHEEL_URL, height=750, scrolling=True)
+    # Recadrage : on masque WHEEL_CROP_TOP pixels en haut de la page des roues
+    # et on n'affiche que WHEEL_VISIBLE_HEIGHT pixels de hauteur.
+    components.html(
+        f"""
+        <div style="height:{WHEEL_VISIBLE_HEIGHT}px; overflow:hidden; border-radius:8px;">
+          <iframe src="{WHEEL_URL}" scrolling="no"
+                  style="border:0; width:100%; height:{WHEEL_VISIBLE_HEIGHT + WHEEL_CROP_TOP}px;
+                         margin-top:-{WHEEL_CROP_TOP}px;"></iframe>
+        </div>
+        """,
+        height=WHEEL_VISIBLE_HEIGHT,
+    )
 st.caption(
     "1️⃣ Tourner la 1ère roue pour choisir le continent et le type d'ancien champion.  \n"
     "2️⃣ Tourner la roue correspondante pour choisir le pays.  \n"
