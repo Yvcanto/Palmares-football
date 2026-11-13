@@ -38,8 +38,8 @@ st.set_page_config(
 # Lien vers la "roue du destin" (à remplacer par l'adresse de TA roue)
 WHEEL_URL = "https://wheelofnames.com/fr/gr4-f29"
 # Réglages du recadrage de la roue (en pixels) : à ajuster si besoin
-WHEEL_CROP_TOP = 125         # partie du haut de la page des roues à masquer
-WHEEL_VISIBLE_HEIGHT = 330   # hauteur affichée (titres + roues)
+WHEEL_CROP_TOP = 305         # partie du haut de la page des roues à masquer
+WHEEL_VISIBLE_HEIGHT = 335   # hauteur affichée (titres + roues)
 WHEEL_FRAME_HEIGHT = 770     # hauteur réelle du site des roues (ne pas changer : évite de décaler les roues)
 
 DEFAULT_XLSX_NAME = "Palmares_Football_FM26_Complet_V3.xlsx"
