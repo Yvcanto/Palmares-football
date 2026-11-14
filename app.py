@@ -160,6 +160,15 @@ def show_color_legend(show_red_name_convention=True):
 # En-tête
 # ----------------------------------------------------------------------
 st.title("⚽ Palmarès Football FM — Tableau de bord")
+st.markdown(
+    "Envie d'une nouvelle carrière sur Football Manager ? Ce site recense les anciens champions "
+    "nationaux et les vainqueurs ou finalistes des compétitions continentales. Plusieurs défis possibles : "
+    "**ramener au sommet** un ancien champion tombé de son piédestal, "
+    "**relancer** un ancien vainqueur continental qui n'a plus rien gagné depuis longtemps ou qui a "
+    "sombré dans les divisions nationales, ou **hisser sur le toit de son continent** un finaliste "
+    "malheureux. Pour choisir votre club, deux options : le faire vous-même grâce aux cartes et aux "
+    "statistiques plus bas, ou laisser le hasard décider avec les roues ci-dessous."
+)
 
 
 def show_wheel(url, crop_top, visible_height, ref_width):
@@ -179,15 +188,6 @@ def show_wheel(url, crop_top, visible_height, ref_width):
 
 
 st.subheader("🎡 Roues du destin")
-st.markdown(
-    "Envie d'une nouvelle carrière sur Football Manager ? Ce site recense les anciens champions "
-    "nationaux et les vainqueurs ou finalistes des compétitions continentales. Plusieurs défis possibles : "
-    "**ramener au sommet** un ancien champion tombé de son piédestal, "
-    "**relancer** un ancien vainqueur continental qui n'a plus rien gagné depuis longtemps ou qui a "
-    "sombré dans les divisions nationales, ou **hisser sur le toit de son continent** un finaliste "
-    "malheureux. Pour choisir votre club, deux options : le faire vous-même grâce aux cartes et aux "
-    "statistiques plus bas, ou laisser le hasard décider avec les roues ci-dessous."
-)
 
 with st.expander("🏆 Champions Nationaux"):
     show_wheel(WHEEL_NATIONAL_URL, WHEEL_NATIONAL_CROP_TOP, WHEEL_NATIONAL_VISIBLE_HEIGHT, WHEEL_NATIONAL_REF_WIDTH)
