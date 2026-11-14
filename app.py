@@ -44,8 +44,8 @@ WHEEL_CONTINENTAL_URL = "https://wheelofnames.com/fr/9gb-9bs"
 #   VISIBLE_HEIGHT = hauteur affichée (titres + roues)
 WHEEL_NATIONAL_CROP_TOP = 263
 WHEEL_NATIONAL_VISIBLE_HEIGHT = 275
-WHEEL_CONTINENTAL_CROP_TOP = 240
-WHEEL_CONTINENTAL_VISIBLE_HEIGHT = 300
+WHEEL_CONTINENTAL_CROP_TOP = 207
+WHEEL_CONTINENTAL_VISIBLE_HEIGHT = 361
 WHEEL_FRAME_HEIGHT = 770     # hauteur réelle du site des roues (ne pas changer : évite de décaler les roues)
 
 DEFAULT_XLSX_NAME = "Palmares_Football_FM26_Complet_V3.xlsx"
