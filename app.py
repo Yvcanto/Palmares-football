@@ -39,14 +39,18 @@ st.set_page_config(
 WHEEL_NATIONAL_URL = "https://wheelofnames.com/fr/gr4-f29"
 WHEEL_CONTINENTAL_URL = "https://wheelofnames.com/fr/9gb-9bs"
 
-# Réglages du recadrage (en pixels) : à ajuster si besoin
+# Réglages du recadrage (en pixels, valables pour une largeur d'affichage de référence).
+# Le recadrage s'adapte tout seul à la largeur de l'écran (proportionnel à REF_WIDTH).
 #   CROP_TOP = partie du haut de la page des roues à masquer
 #   VISIBLE_HEIGHT = hauteur affichée (titres + roues)
+#   REF_WIDTH = largeur de la zone au moment du réglage
 WHEEL_NATIONAL_CROP_TOP = 263
 WHEEL_NATIONAL_VISIBLE_HEIGHT = 275
+WHEEL_NATIONAL_REF_WIDTH = 1160
 WHEEL_CONTINENTAL_CROP_TOP = 207
 WHEEL_CONTINENTAL_VISIBLE_HEIGHT = 361
-WHEEL_FRAME_HEIGHT = 770     # hauteur réelle du site des roues (ne pas changer : évite de décaler les roues)
+WHEEL_CONTINENTAL_REF_WIDTH = 1733
+WHEEL_FRAME_HEIGHT = 770     # hauteur de la page des roues pour la largeur de référence
 
 DEFAULT_XLSX_NAME = "Palmares_Football_FM26_Complet_V3.xlsx"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -159,16 +163,29 @@ def show_color_legend(show_red_name_convention=True):
 st.title("⚽ Palmarès Football FM — Tableau de bord")
 
 
-def show_wheel(url, crop_top, visible_height):
-    """Affiche la page des roues recadrée (on masque le haut, on limite la hauteur)."""
+def show_wheel(url, crop_top, visible_height, ref_width):
+    """Affiche la page des roues recadrée. Le recadrage est mis à l'échelle selon la
+    largeur réelle de la zone, car la taille des roues dépend de la largeur de l'écran."""
     st.link_button("↗️ Ouvrir dans un nouvel onglet (si la roue ne s'affiche pas ci-dessous)", url)
     components.html(
         f"""
-        <div style="height:{visible_height}px; overflow:hidden; border-radius:8px;">
-          <iframe src="{url}" scrolling="no"
-                  style="border:0; width:100%; height:{WHEEL_FRAME_HEIGHT}px;
-                         margin-top:-{crop_top}px;"></iframe>
+        <style>html,body{{margin:0;padding:0;background:transparent;overflow:hidden}}</style>
+        <div id="box" style="overflow:hidden; border-radius:8px; height:{visible_height}px;">
+          <iframe id="wf" src="{url}" scrolling="no" style="border:0; width:100%; display:block;
+                  height:{WHEEL_FRAME_HEIGHT}px; margin-top:-{crop_top}px;"></iframe>
         </div>
+        <script>
+          const REF = {ref_width}, CROP = {crop_top}, VIS = {visible_height}, FH = {WHEEL_FRAME_HEIGHT};
+          function fit() {{
+            const k = document.documentElement.clientWidth / REF;
+            document.getElementById('box').style.height = (VIS * k) + 'px';
+            const f = document.getElementById('wf');
+            f.style.height = (FH * k) + 'px';
+            f.style.marginTop = (-CROP * k) + 'px';
+            try {{ window.frameElement.style.height = (VIS * k + 2) + 'px'; }} catch (e) {{}}
+          }}
+          fit(); window.addEventListener('resize', fit);
+        </script>
         """,
         height=visible_height,
     )
@@ -177,7 +194,7 @@ def show_wheel(url, crop_top, visible_height):
 st.subheader("🎡 Roues du destin")
 
 with st.expander("🏆 Champions Nationaux"):
-    show_wheel(WHEEL_NATIONAL_URL, WHEEL_NATIONAL_CROP_TOP, WHEEL_NATIONAL_VISIBLE_HEIGHT)
+    show_wheel(WHEEL_NATIONAL_URL, WHEEL_NATIONAL_CROP_TOP, WHEEL_NATIONAL_VISIBLE_HEIGHT, WHEEL_NATIONAL_REF_WIDTH)
     st.caption(
         "1️⃣ Tourner la 1ère roue pour choisir le continent et le type d'ancien champion.  \n"
         "2️⃣ Tourner la roue correspondante pour choisir le pays.  \n"
@@ -185,7 +202,7 @@ with st.expander("🏆 Champions Nationaux"):
     )
 
 with st.expander("🌍 Champions continentaux"):
-    show_wheel(WHEEL_CONTINENTAL_URL, WHEEL_CONTINENTAL_CROP_TOP, WHEEL_CONTINENTAL_VISIBLE_HEIGHT)
+    show_wheel(WHEEL_CONTINENTAL_URL, WHEEL_CONTINENTAL_CROP_TOP, WHEEL_CONTINENTAL_VISIBLE_HEIGHT, WHEEL_CONTINENTAL_REF_WIDTH)
     st.caption(
         "1️⃣ Tourner la 1ère roue pour choisir le continent.  \n"
         "2️⃣ Tourner la 2ème roue pour savoir quel type de club prendre.  \n"
