@@ -13,7 +13,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-import streamlit.components.v1 as components
 
 from data_utils import (
     COLOR_LEGEND,
@@ -164,30 +163,18 @@ st.title("⚽ Palmarès Football FM — Tableau de bord")
 
 
 def show_wheel(url, crop_top, visible_height, ref_width):
-    """Affiche la page des roues recadrée. Le recadrage est mis à l'échelle selon la
-    largeur réelle de la zone, car la taille des roues dépend de la largeur de l'écran."""
+    """Affiche la page des roues recadrée, identique sur tous les écrans.
+    La page est toujours rendue à sa largeur de référence (ref_width), puis réduite ou
+    agrandie d'un bloc pour remplir la largeur disponible : la mise en page ne change donc jamais."""
     st.link_button("↗️ Ouvrir dans un nouvel onglet (si la roue ne s'affiche pas ci-dessous)", url)
-    components.html(
-        f"""
-        <style>html,body{{margin:0;padding:0;background:transparent;overflow:hidden}}</style>
-        <div id="box" style="overflow:hidden; border-radius:8px; height:{visible_height}px;">
-          <iframe id="wf" src="{url}" scrolling="no" style="border:0; width:100%; display:block;
-                  height:{WHEEL_FRAME_HEIGHT}px; margin-top:-{crop_top}px;"></iframe>
-        </div>
-        <script>
-          const REF = {ref_width}, CROP = {crop_top}, VIS = {visible_height}, FH = {WHEEL_FRAME_HEIGHT};
-          function fit() {{
-            const k = document.documentElement.clientWidth / REF;
-            document.getElementById('box').style.height = (VIS * k) + 'px';
-            const f = document.getElementById('wf');
-            f.style.height = (FH * k) + 'px';
-            f.style.marginTop = (-CROP * k) + 'px';
-            try {{ window.frameElement.style.height = (VIS * k + 2) + 'px'; }} catch (e) {{}}
-          }}
-          fit(); window.addEventListener('resize', fit);
-        </script>
-        """,
-        height=visible_height,
+    st.markdown(
+        f'<div style="container-type:inline-size; position:relative; width:100%; '
+        f'aspect-ratio:{ref_width} / {visible_height}; overflow:hidden; border-radius:8px;">'
+        f'<iframe src="{url}" scrolling="no" '
+        f'style="position:absolute; left:0; top:0; border:0; width:{ref_width}px; '
+        f'height:{WHEEL_FRAME_HEIGHT}px; transform-origin:0 0; '
+        f'transform:scale(calc(100cqw / {ref_width}px)) translateY(-{crop_top}px);"></iframe></div>',
+        unsafe_allow_html=True,
     )
 
 
