@@ -35,11 +35,17 @@ st.set_page_config(
     layout="wide",
 )
 
-# Lien vers la "roue du destin" (à remplacer par l'adresse de TA roue)
-WHEEL_URL = "https://wheelofnames.com/fr/gr4-f29"
-# Réglages du recadrage de la roue (en pixels) : à ajuster si besoin
-WHEEL_CROP_TOP = 263         # partie du haut de la page des roues à masquer
-WHEEL_VISIBLE_HEIGHT = 275   # hauteur affichée (titres + roues)
+# Roues du destin (liens de partage Wheel of Names)
+WHEEL_NATIONAL_URL = "https://wheelofnames.com/fr/gr4-f29"
+WHEEL_CONTINENTAL_URL = "https://wheelofnames.com/fr/9gb-9bs"
+
+# Réglages du recadrage (en pixels) : à ajuster si besoin
+#   CROP_TOP = partie du haut de la page des roues à masquer
+#   VISIBLE_HEIGHT = hauteur affichée (titres + roues)
+WHEEL_NATIONAL_CROP_TOP = 263
+WHEEL_NATIONAL_VISIBLE_HEIGHT = 275
+WHEEL_CONTINENTAL_CROP_TOP = 240
+WHEEL_CONTINENTAL_VISIBLE_HEIGHT = 300
 WHEEL_FRAME_HEIGHT = 770     # hauteur réelle du site des roues (ne pas changer : évite de décaler les roues)
 
 DEFAULT_XLSX_NAME = "Palmares_Football_FM26_Complet_V3.xlsx"
@@ -151,25 +157,43 @@ def show_color_legend(show_red_name_convention=True):
 # En-tête
 # ----------------------------------------------------------------------
 st.title("⚽ Palmarès Football FM — Tableau de bord")
-with st.expander("🎡 La roue du destin : tirer un club au hasard"):
-    st.link_button("↗️ Ouvrir la roue dans un nouvel onglet (si elle ne s'affiche pas ci-dessous)", WHEEL_URL)
-    # Recadrage : on masque WHEEL_CROP_TOP pixels en haut de la page des roues
-    # et on n'affiche que WHEEL_VISIBLE_HEIGHT pixels de hauteur.
+
+
+def show_wheel(url, crop_top, visible_height):
+    """Affiche la page des roues recadrée (on masque le haut, on limite la hauteur)."""
+    st.link_button("↗️ Ouvrir dans un nouvel onglet (si la roue ne s'affiche pas ci-dessous)", url)
     components.html(
         f"""
-        <div style="height:{WHEEL_VISIBLE_HEIGHT}px; overflow:hidden; border-radius:8px;">
-          <iframe src="{WHEEL_URL}" scrolling="no"
+        <div style="height:{visible_height}px; overflow:hidden; border-radius:8px;">
+          <iframe src="{url}" scrolling="no"
                   style="border:0; width:100%; height:{WHEEL_FRAME_HEIGHT}px;
-                         margin-top:-{WHEEL_CROP_TOP}px;"></iframe>
+                         margin-top:-{crop_top}px;"></iframe>
         </div>
         """,
-        height=WHEEL_VISIBLE_HEIGHT,
+        height=visible_height,
     )
-st.caption(
-    "1️⃣ Tourner la 1ère roue pour choisir le continent et le type d'ancien champion.  \n"
-    "2️⃣ Tourner la roue correspondante pour choisir le pays.  \n"
-    "3️⃣ Revenir sur ce site pour voir quelle est l'équipe à prendre en fonction des résultats des roues."
-)
+
+
+st.subheader("🎡 Roues du destin")
+
+with st.expander("🏆 Champions Nationaux"):
+    show_wheel(WHEEL_NATIONAL_URL, WHEEL_NATIONAL_CROP_TOP, WHEEL_NATIONAL_VISIBLE_HEIGHT)
+    st.caption(
+        "1️⃣ Tourner la 1ère roue pour choisir le continent et le type d'ancien champion.  \n"
+        "2️⃣ Tourner la roue correspondante pour choisir le pays.  \n"
+        "3️⃣ Revenir sur ce site pour voir quelle est l'équipe à prendre en fonction des résultats des roues."
+    )
+
+with st.expander("🌍 Champions continentaux"):
+    show_wheel(WHEEL_CONTINENTAL_URL, WHEEL_CONTINENTAL_CROP_TOP, WHEEL_CONTINENTAL_VISIBLE_HEIGHT)
+    st.caption(
+        "1️⃣ Tourner la 1ère roue pour choisir le continent.  \n"
+        "2️⃣ Tourner la 2ème roue pour savoir quel type de club prendre.  \n"
+        "3️⃣ Si vous tombez sur « finaliste sans titre » et que vous avez obtenu Afrique au 1er tirage, "
+        "prenez les Kaizer Chiefs en Afrique du Sud : ce sont les seuls disponibles pour ce continent. "
+        "Sinon, tournez la roue correspondant au continent tiré au sort.  \n"
+        "4️⃣ Pour les autres critères, reportez-vous aux cartes des compétitions continentales."
+    )
 
 tab_carte, tab_compare, tab_stats, tab_pays = st.tabs(
     ["🗺️ Carte interactive", "⚖️ Comparateur de clubs",
