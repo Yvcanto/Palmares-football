@@ -34,6 +34,23 @@ st.set_page_config(
     layout="wide",
 )
 
+# Thème sombre ? (les clubs "noirs" reçoivent alors un liseret blanc pour rester visibles)
+def _is_dark_theme():
+    try:
+        return st.context.theme.type == "dark"
+    except Exception:
+        return st.get_option("theme.base") == "dark"
+
+
+IS_DARK = _is_dark_theme()
+BLACK_MARKER = COLOR_LEGEND["NONE"]["marker"]
+
+
+def outline_for(marker_color, default):
+    """Couleur de contour d'un point/barre : blanc pour un club en noir en mode sombre."""
+    return "#FFFFFF" if (IS_DARK and marker_color == BLACK_MARKER) else default
+
+
 # Roues du destin (liens de partage Wheel of Names)
 WHEEL_NATIONAL_URL = "https://wheelofnames.com/fr/gr4-f29"
 WHEEL_CONTINENTAL_URL = "https://wheelofnames.com/fr/9gb-9bs"
@@ -563,7 +580,7 @@ def make_hbar_with_hover(labels, values, colors, card_texts, xaxis_title, height
     ))
     fig.add_trace(go.Bar(
         x=list(values), y=labels, orientation="h",
-        marker=dict(color=list(colors)),
+        marker=dict(color=list(colors), line=dict(color=[outline_for(c, "rgba(0,0,0,0)") for c in colors], width=1.5)),
         hoverinfo="skip", showlegend=False,
     ))
     fig.update_layout(
@@ -604,7 +621,7 @@ def make_vbar_with_hover(labels, values, colors, card_texts, yaxis_title, height
     ))
     fig.add_trace(go.Bar(
         x=labels, y=list(values),
-        marker=dict(color=list(colors)),
+        marker=dict(color=list(colors), line=dict(color=[outline_for(c, "rgba(0,0,0,0)") for c in colors], width=1.5)),
         hoverinfo="skip", showlegend=False,
     ))
     yaxis_config = dict(title=yaxis_title)
@@ -658,7 +675,7 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
 
     fig.add_trace(go.Scatter(
         x=years, y=labels, mode="markers",
-        marker=dict(size=16, color=list(colors), line=dict(width=1, color="#444444")),
+        marker=dict(size=16, color=list(colors), line=dict(width=1.5 if IS_DARK else 1, color=[outline_for(c, "#444444") for c in colors])),
         hoverinfo="skip", showlegend=False,
     ))
 
