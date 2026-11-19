@@ -677,9 +677,9 @@ def make_timeline_with_hover(labels, years, colors, card_texts, height=None):
 with tab_compare:
     st.subheader("Comparateur de clubs")
     st.caption(
-        "Comparaison restreinte aux clubs mis en avant par un surlignage "
-        "dans le fichier Excel (les autres clubs sont exclus pour garder "
-        "une comparaison lisible)."
+        "Par défaut, la comparaison est restreinte aux clubs mis en avant par un "
+        "surlignage dans le fichier Excel. Choisissez « Tous types confondus » pour "
+        "comparer l'ensemble des clubs en activité, quelle que soit leur division."
     )
 
     compare_mode = st.radio(
@@ -687,6 +687,7 @@ with tab_compare:
         [
             "🔵 Clubs à la division la plus basse (bleu + orange)",
             "🟢 Clubs au titre le plus ancien (vert + orange)",
+            "⚪ Tous types confondus (tous les clubs en activité)",
         ],
     )
 
@@ -696,9 +697,13 @@ with tab_compare:
     if compare_mode.startswith("🔵"):
         pool = df_national_c[df_national_c["Classified"].isin(["0070C0", "FF9900"])].copy()
         criterion_note = "Regroupe les clubs surlignés en bleu et en orange (l'orange combinant les deux critères)."
-    else:
+    elif compare_mode.startswith("🟢"):
         pool = df_national_c[df_national_c["Classified"].isin(["00B050", "FF9900"])].copy()
         criterion_note = "Regroupe les clubs surlignés en vert et en orange (l'orange combinant les deux critères)."
+    else:
+        # Tous les clubs encore en activité (les clubs disparus, sans division, sont exclus).
+        pool = df_national_c[df_national_c["Classified"] != "FF0000"].copy()
+        criterion_note = "Regroupe tous les clubs en activité, surlignés ou non (les clubs disparus sont exclus)."
 
     continent_choice = st.selectbox(
         "Continent",
@@ -709,7 +714,21 @@ with tab_compare:
 
     st.caption(f"{criterion_note} — {pool['Club'].nunique()} clubs éligibles.")
 
-    def filter_block(label, options, key_prefix, invert=False, value_labels=None):
+    def year_picker(label, key, last=False):
+        """Choix d'une année en deux temps : la décennie (1890, 1900 ... 2020), puis l'année
+        dans cette décennie (ex. 1930 à 1939). Plage couverte : 1890 à 2029."""
+        decades = list(range(1890, 2030, 10))
+        dec = st.selectbox(
+            f"{label} — décennie", decades,
+            index=len(decades) - 1 if last else 0, key=f"{key}_dec",
+            format_func=lambda d: f"{d}s",
+        )
+        return st.selectbox(
+            f"{label} — année", list(range(dec, dec + 10)),
+            index=9 if last else 0, key=f"{key}_yr_{dec}",
+        )
+
+    def filter_block(label, options, key_prefix, invert=False, value_labels=None, picker=None):
         op = st.selectbox(
             label,
             ["Peu importe", "Inférieur à", "Supérieur à", "Entre"],
@@ -718,6 +737,15 @@ with tab_compare:
         if op == "Peu importe":
             return None
         fmt = (lambda v: value_labels[v]) if value_labels else (lambda v: str(v))
+        if picker is not None:
+            if op == "Entre":
+                v1 = picker("De", f"{key_prefix}_v1", False)
+                v2 = picker("À", f"{key_prefix}_v2", True)
+                return ("between", min(v1, v2), max(v1, v2))
+            val = picker("Valeur", f"{key_prefix}_v1", False)
+            if op == "Inférieur à":
+                return ("gt" if invert else "lt", val)
+            return ("lt" if invert else "gt", val)
         if op == "Entre":
             c1, c2 = st.columns(2)
             v1 = c1.selectbox("De", options, index=0, format_func=fmt, key=f"{key_prefix}_v1")
@@ -740,7 +768,6 @@ with tab_compare:
             return series > filt[1]
         return (series >= filt[1]) & (series <= filt[2])
 
-    year_options = sorted(pool["Annee_dernier_titre"].dropna().unique().astype(int).tolist())
     niveau_options = list(range(1, 9))  # 1 à 8 fixe, même si tous les niveaux ne sont pas encore utilisés (pays/clubs futurs)
     titres_options = sorted(pool["Nb_titres"].dropna().unique().astype(int).tolist())
     niveau_labels = {
@@ -753,7 +780,7 @@ with tab_compare:
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("**Année du dernier titre**")
-        filt_year = filter_block("Filtre année", year_options, "year")
+        filt_year = filter_block("Filtre année", None, "year", picker=year_picker)
     with col2:
         st.markdown("**Niveau de division**")
         st.caption("« Inférieur » = division plus basse dans la hiérarchie (niveau numérique plus élevé).")
