@@ -44,6 +44,16 @@ def _is_dark_theme():
 
 IS_DARK = _is_dark_theme()
 BLACK_MARKER = COLOR_LEGEND["NONE"]["marker"]
+NON_JOUABLE_COLOR = "#B91C1C"  # rouge : club non jouable en FM26 (division trop basse)
+CHART_NEUTRAL_COLOR = BLACK_MARKER  # noir : club sans surlignage (liseret blanc en thème sombre, via outline_for)
+
+
+def club_chart_color(color_code, non_jouable):
+    """Couleur d'une barre de graphique selon le code couleur du site."""
+    if non_jouable:
+        return NON_JOUABLE_COLOR
+    key = classify_color(color_code)
+    return CHART_NEUTRAL_COLOR if key == "NONE" else COLOR_LEGEND[key]["marker"]
 
 
 def outline_for(marker_color, default):
@@ -830,8 +840,9 @@ with tab_compare:
         compare_df["Titres_Continental"] = compare_df.index.map(
             lambda club: int(continental_winners.loc[continental_winners["Club"] == club, "Nb_titres"].sum())
         )
-        compare_df["CouleurBarre"] = compare_df["Classified"].map(
-            lambda c: COLOR_LEGEND[c]["marker"]
+        compare_df["CouleurBarre"] = compare_df.apply(
+            lambda r: NON_JOUABLE_COLOR if r["_non_jouable"] else COLOR_LEGEND[r["Classified"]]["marker"],
+            axis=1,
         )
         compare_df = compare_df.sort_values("Niveau_division")
         # Nom de club affiché avec son pays entre parenthèses, pour lever
@@ -851,6 +862,7 @@ with tab_compare:
         compare_df["CardText"] = compare_df.apply(make_compare_card_text, axis=1)
 
         st.caption("Survolez la ligne d'un club (partout, y compris son nom) pour voir sa fiche complète.")
+        st.caption("🟥 En rouge : club non jouable dans FM26 (division trop basse).")
 
         st.markdown("#### Niveau de division actuel (1 = plus haut niveau du pays)")
         NIVEAU_MAX = 8  # échelle fixe (1 = élite ... 8 = niveau le plus bas du système)
@@ -917,7 +929,8 @@ with tab_stats:
     # Titres nationaux par club+pays (le plus titré de chaque pays)
     nat_best = (
         df_national.loc[df_national.groupby("Pays")["Nb_titres"].idxmax()]
-        [["Pays", "Club", "Nb_titres", "Division_actuelle", "Niveau_division", "Annee_dernier_titre"]]
+        [["Pays", "Club", "Nb_titres", "Division_actuelle", "Niveau_division", "Annee_dernier_titre",
+          "_color", "_non_jouable"]]
         .rename(columns={"Nb_titres": "Titres_nat"})
     )
 
@@ -937,7 +950,8 @@ with tab_stats:
         # Titres par club (peut y avoir plusieurs clubs vainqueurs par pays ; on garde le plus titré)
         c1_best = (
             continental_df.loc[continental_df.groupby("Pays")["Nb_titres"].idxmax()]
-            [["Pays", "Club", "Nb_titres", "Division_actuelle", "Niveau_division", "Annee_dernier_titre"]]
+            [["Pays", "Club", "Nb_titres", "Division_actuelle", "Niveau_division", "Annee_dernier_titre",
+              "_color", "_non_jouable"]]
             .rename(columns={"Nb_titres": "Titres_c1", "Club": "Club_c1"})
         )
 
@@ -945,6 +959,9 @@ with tab_stats:
         chart_df = nat_best.copy()
         chart_df["Label"] = chart_df["Pays"] + " — " + chart_df["Club"]
         chart_df = chart_df.sort_values("Titres_nat")
+        chart_df["CouleurBarre"] = chart_df.apply(
+            lambda r: club_chart_color(r["_color"], r["_non_jouable"]), axis=1
+        )
         chart_df["CardText"] = chart_df.apply(
             lambda r: (
                 f"<b>{r['Club']}</b><br>Pays : {r['Pays']}<br>"
@@ -956,9 +973,11 @@ with tab_stats:
         )
         fig = make_hbar_with_hover(
             chart_df["Label"].tolist(), chart_df["Titres_nat"].tolist(),
-            [COLOR_CHAMP] * len(chart_df), chart_df["CardText"].tolist(),
+            chart_df["CouleurBarre"].tolist(), chart_df["CardText"].tolist(),
             xaxis_title="Titres nationaux", height=max(500, 38 * len(chart_df)),
         )
+        show_color_legend(show_red_name_convention=False)
+        st.caption("Noir : club sans surlignage. 🟥 Rouge foncé : club non jouable dans FM26 (division trop basse).")
         st.caption("Survolez la ligne d'un pays (partout, y compris son nom) pour voir la fiche complète.")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -966,6 +985,19 @@ with tab_stats:
         chart_df = c1_best.rename(columns={"Club_c1": "Club"}).copy()
         chart_df["Label"] = chart_df["Pays"] + " — " + chart_df["Club"]
         chart_df = chart_df.sort_values("Titres_c1")
+        # Le code couleur est celui du club dans son championnat national (feuille du pays) ;
+        # à défaut (pays non suivi), on garde le statut de la ligne continentale.
+        nat_status = df_national.drop_duplicates(subset=["Pays", "Club"]).set_index(["Pays", "Club"])[
+            ["_color", "_non_jouable"]
+        ]
+
+        def _continental_bar_color(r):
+            if (r["Pays"], r["Club"]) in nat_status.index:
+                st_row = nat_status.loc[(r["Pays"], r["Club"])]
+                return club_chart_color(st_row["_color"], st_row["_non_jouable"])
+            return club_chart_color(r["_color"], r["_non_jouable"])
+
+        chart_df["CouleurBarre"] = chart_df.apply(_continental_bar_color, axis=1)
         chart_df["CardText"] = chart_df.apply(
             lambda r: (
                 f"<b>{r['Club']}</b><br>Pays : {r['Pays']}<br>"
@@ -977,9 +1009,11 @@ with tab_stats:
         )
         fig = make_hbar_with_hover(
             chart_df["Label"].tolist(), chart_df["Titres_c1"].tolist(),
-            [COLOR_LDC] * len(chart_df), chart_df["CardText"].tolist(),
+            chart_df["CouleurBarre"].tolist(), chart_df["CardText"].tolist(),
             xaxis_title=f"Titres — {competition_for_stats}", height=max(400, 38 * len(chart_df)),
         )
+        show_color_legend(show_red_name_convention=False)
+        st.caption("Noir : club sans surlignage. 🟥 Rouge foncé : club non jouable dans FM26 (division trop basse).")
         st.caption("Survolez la ligne d'un pays (partout, y compris son nom) pour voir la fiche complète.")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -1070,11 +1104,13 @@ with tab_pays:
 
     if not sub.empty:
         sub_charts = sub.copy()
-        # Gris neutre pour les clubs non surlignés (au lieu du quasi-noir
-        # utilisé sur la carte, invisible en thème sombre sur des barres).
-        CHART_NEUTRAL_COLOR = "#94A3B8"
-        sub_charts["CouleurBarre"] = sub_charts["_color"].map(
-            lambda c: CHART_NEUTRAL_COLOR if classify_color(c) == "NONE" else COLOR_LEGEND[classify_color(c)]["marker"]
+        # Noir pour les clubs non surlignés, comme sur la carte (liseret blanc en thème sombre),
+        # rouge pour les clubs non jouables.
+        sub_charts["CouleurBarre"] = sub_charts.apply(
+            lambda r: NON_JOUABLE_COLOR if r.get("_non_jouable", False)
+            else CHART_NEUTRAL_COLOR if classify_color(r["_color"]) == "NONE"
+            else COLOR_LEGEND[classify_color(r["_color"])]["marker"],
+            axis=1,
         )
 
         continental_winners = df[df["Categorie"] == "Continental - Vainqueurs"]
